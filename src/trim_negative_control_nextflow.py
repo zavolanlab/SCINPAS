@@ -75,9 +75,10 @@ def trim(bam):
             
         elif rev == False:  
             cleavage_site = int(refEnd)
-
-        read.set_tag("OC", cleavage_site)
-        read.set_tag("FC", cleavage_site)
+        
+        cleavage_site += 1
+        read.set_tag("XO", cleavage_site)
+        read.set_tag("XF", cleavage_site)
         
         if read.has_tag("UB"):
             UB = read.get_tag("UB")

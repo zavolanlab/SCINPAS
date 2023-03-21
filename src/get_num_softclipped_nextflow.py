@@ -14,9 +14,10 @@ import argparse
 
 
 
+
 """
-Aim: Get csv output file that contains number of read counts in a specific sample and a specific bam type.
-bam type can be original, dedup, nonpolyA, all polyA, polyA mapping to terminal exon, exonic, intronic and intergenic.
+Aim: Get csv output file that contains number of read having softclipped region(direction does not matter) in a specific sample and a specific bam type.
+Only used for deduplicated bam file. because we want total number of softclipped reads.
 
 """
 def write_out(row_data, o_file):
@@ -38,7 +39,7 @@ def write_out(row_data, o_file):
     w = csv.writer(open(o_file, "w"))
     w.writerow(row_data)
 
-def count_total_reads(samFile):
+def count_softclipped_reads(samFile):
     """
     Parameters
     ----------
@@ -47,14 +48,24 @@ def count_total_reads(samFile):
 
     Returns
     -------
-    count : int
-        The number of reads in that bam file.
+    softclipped_count : int
+        The number of reads that have softclipped reads in that bam file.
+        Does not matter if softclipped direction does not match with direction of a read.
     """
-    count = 0
+    softclipped_count = 0
     for read in samFile.fetch():
-        count += 1
+        tuples = read.cigartuples
+        left_end = tuples[0]
+        right_end = tuples[-1]
         
-    return count
+        if left_end[0] == 4 or right_end[0] == 4:
+            softclipped_count += 1
+        
+        else:
+            print('not softclipped read')
+            continue
+        
+    return softclipped_count
 
 def get_count_data(sam, sample, bamType):
     """
@@ -77,8 +88,7 @@ def get_count_data(sam, sample, bamType):
         A list that contains sample, bam type and count. This will be 1 row in the csv.
         Later, this will be merged across all samples and all bam types. 
     """
-
-    count = count_total_reads(sam)
+    count = count_softclipped_reads(sam)
         
     row_data = [sample, bamType, count]
     return row_data

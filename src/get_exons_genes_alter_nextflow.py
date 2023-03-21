@@ -70,11 +70,19 @@ def filter_exons(df):
     for index, row in df.iterrows():
         if row['feature'] == 'exon' and row['gene_id'] != '' and row['transcript_id'] != '' and row['exon_id'] != '':
             # newly added line
-            if row['transcript_support_level'] != 'NA' and row['transcript_support_level'] != '' and int(float(row['transcript_support_level'])) <= 3:
-                # newly added line
-                if row['gene_type'] == 'protein_coding' or row['gene_type'] == 'lncRNA':
-                    filtered_rows.append((row['seqname'], row['start'], row['end'], \
-                                          row['gene_name'], row['transcript_support_level'], row['strand']))
+            if row['gene_type'] == 'protein_coding' or row['gene_type'] == 'lncRNA':
+
+                if row['transcript_support_level'] == 'NA':
+                    score = 2100
+                
+                elif row['transcript_support_level'] == '':
+                    score = 2000
+                   
+                else:
+                    score = row['transcript_support_level']
+                    
+                filtered_rows.append((row['seqname'], row['start'], row['end'], \
+                                      row['gene_name'], score, row['strand']))
     
     result_df = pd.DataFrame(filtered_rows, columns = ['seqid', 'start', 'end', 'id', 'score', 'strand'])
     result_df.sort_values(by=['seqid', 'start', 'end'], inplace = True)       

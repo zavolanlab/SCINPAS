@@ -86,8 +86,8 @@ def get_softclipped(read, use_fc):
             size_softclip = left_end[1]
         
         elif use_fc:
-            OCS = int(read.get_tag('OC'))
-            FCS = int(read.get_tag('FC'))
+            OCS = int(read.get_tag('XO'))
+            FCS = int(read.get_tag('XF'))
             difference = OCS - FCS
               
             size_softclip = left_end[1] - difference
@@ -100,8 +100,8 @@ def get_softclipped(read, use_fc):
             size_softclip = right_end[1]
 
         elif use_fc:
-            OCS = int(read.get_tag('OC'))
-            FCS = int(read.get_tag('FC'))
+            OCS = int(read.get_tag('XO'))
+            FCS = int(read.get_tag('XF'))
             difference = FCS - OCS
                     
             size_softclip = right_end[1] - difference
@@ -187,11 +187,11 @@ def plot_histogram(file, distribution_fixed, distribution_unfixed):
     plt.hist(distribution_unfixed, bins = bins, histtype='bar', label = "unfixed", color ='b', ec = 'b', fc = 'None') 
     plt.hist(distribution_fixed, bins = bins, histtype='bar', label = "fixed", color = 'gold', ec= 'gold', fc = 'None')
     
-    mean_unfixed = get_mean(distribution_unfixed)
-    mean_fixed = get_mean(distribution_fixed)
+#    mean_unfixed = get_mean(distribution_unfixed)
+#    mean_fixed = get_mean(distribution_fixed)
     
-    title = 'size of softclippped (unfixed): ' + str(mean_unfixed) +'\n' + 'size of softclippped (fixed): ' + str(mean_fixed)
-    plt.title(label = title, fontsize = 'x-large')
+#    title = 'size of softclippped (unfixed): ' + str(mean_unfixed) +'\n' + 'size of softclippped (fixed): ' + str(mean_fixed)
+#    plt.title(label = title, fontsize = 'x-large')
     
     plt.legend(loc="upper right")
     plt.yscale("log") 

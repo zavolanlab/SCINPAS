@@ -11,15 +11,14 @@ import matplotlib.pyplot as plt
 import argparse
 import csv
 import numpy as np
-import os
 from collections import Counter
 import pandas as pd
 import statistics
 
 """
-Aim 1 : Using all polyA reads, draw all 18 motif frequency plots.
-Aim 2 : Using all polyA reads, draw an overlaid motif frqeuncy plot which contains all 18 motif frequency plots.
-Aim 3 : Using all polyA reads, compute a motif score.(1 score per 1 sample)
+Aim 1 : Using all pA clusteres in a particular sample, draw all 18 motif frequency plots.
+Aim 2 : Using all pA clusteres in a particular sample, draw an overlaid motif frqeuncy plot which contains all 18 motif frequency plots.
+Aim 3 : Using all pA clusteres in a particular sample, compute a motif score.(1 score per 1 sample)
 
         18 motives were used (12 + 6) for scoring. 
         For each motif : Whenever a peak is located within a certain range (produced by gtf), you increment score by 1.
@@ -725,7 +724,7 @@ def search_motif_in_cs(representative_fc_concatenate, upstream, fasta, motif_tup
     # by the time one comes here, it means one couldnt find that motif (e.g. 'AAUAAA') in the range (e.g. -40bp to + 20bp) of this subsequence
     return False
 
-def get_partial_dataframe(total_representative_cs, until, Fasta_file, m_list, down):
+def get_full_dataframe(total_representative_cs, until, Fasta_file, m_list, down):
     """
     Parameters
     ----------    
@@ -748,8 +747,8 @@ def get_partial_dataframe(total_representative_cs, until, Fasta_file, m_list, do
     
     Returns
     -------
-    partial_dataframe : dataframe
-        a partial dataframe which considers only 1 specific chromosome.
+    full_dataframe : dataframe
+        a full dataframe which considers all chromosomes in a given sample and class.
         each row: fixed representative cleavage site where it is tuple of (chromId, direction, representative_fc)  
         each col: motif
         
@@ -762,15 +761,15 @@ def get_partial_dataframe(total_representative_cs, until, Fasta_file, m_list, do
     col_names = [elem[0] for elem in m_list]
     
     # create an empty dataframe
-    partial_dataframe = pd.DataFrame(np.zeros((len(row_names), len(col_names))))
+    full_dataframe = pd.DataFrame(np.zeros((len(row_names), len(col_names))))
     
     # give column and row names to the empty dataframe
-    partial_dataframe.columns = col_names
-    partial_dataframe.index = row_names
+    full_dataframe.columns = col_names
+    full_dataframe.index = row_names
     
     # because here you are just iterating row_names of partial_dataframe, 
     # it is ok content of partial_dataframe changes (as long as the row_names do not change).
-    for representative_fc in partial_dataframe.index:
+    for representative_fc in full_dataframe.index:
         for motif_tuple in m_list:
             
             motif_present = search_motif_in_cs(representative_fc, until, Fasta_file, motif_tuple, down)
@@ -779,217 +778,39 @@ def get_partial_dataframe(total_representative_cs, until, Fasta_file, m_list, do
                 # acessing the element by row_name and col_name
                 # += in dataframe is not recommended.
                 # If you want to update, copy the dataframe and then increment by 1
-                copy_dataframe = partial_dataframe.copy()
-                partial_dataframe.loc[representative_fc, motif_tuple[0]] = copy_dataframe.loc[representative_fc, motif_tuple[0]] + 1
+                copy_dataframe = full_dataframe.copy()
+                full_dataframe.loc[representative_fc, motif_tuple[0]] = copy_dataframe.loc[representative_fc, motif_tuple[0]] + 1
                 
             elif not motif_present:
                 continue
     
-    return partial_dataframe
+    return full_dataframe
 
-def get_representative_cleavage_sites(dictionary):
+def get_representative_cleavage_sites(tempfile):
     """
     Parameters
     ----------    
-    dictionary : dictionary of list.
-            key : a tuple of chromID, cluster_ID and direction.
-            value : a list which contains all "potential" cleavage sites with same chromID, cluster_ID and direction.
-            This dictionary has all potential cleavage sites in a specific sample and a specific chromosome.
-            
-            The most frequent read end (most frequent potential cleavage sites) 
-            amongst read ends with same chromID, cluster_ID and direction 
-            will be selected as a fixed "true"/"representative" cleavage site.
+    tempfile : string
+        bed file containing all polyA reads. each row is a cluster of polyA reads with score.
+        cluster_id in each row contains information about representative fixed cleavage site.
         
     Returns
     -------
     representative_FC_list : list of string
         a list where each element is chromID_direction_representative_fc
-
     """      
     representative_FC_list = []
-    # key = (chromID, cluster_ID, direction)
-    # value = fixed cleavage sites
-    for elem in dictionary.keys():
-        # read_ends = [181, 185, 185, 190, 190, 190, 190, 190, 190......]
-        read_ends = dictionary[elem]
-        # Counter(read_ends) = {181:1, 185:2, 190:6}
-        # read_ends_keys = [181, 185, 190]
-        read_ends_keys = list(Counter(read_ends).keys())
-        # read_ends_values = [1, 2, 6]
-        read_ends_values = list(Counter(read_ends).values())
-        
-        representative_fc = read_ends_keys[read_ends_values.index(max(read_ends_values))]
-        
-        chromId = elem[0]
-        direction = elem[2]
-        # df does not seem to be able to access row by tuple. Hence just concatenate them
-        representative_fc_concatenate = chromId + '_' + direction + '_' + representative_fc
-        representative_FC_list.append(representative_fc_concatenate)
+    with open(tempfile, "r") as t:
+        for line in t:          
+            cluster_id = line.split()[3]
+            chromId = cluster_id.split(':')[0]
+            representative_fc = cluster_id.split(':')[1]
+            direction = cluster_id.split(':')[2]
+            
+            representative_fc_concatenate = chromId + '_' + direction + '_' + representative_fc
+            representative_FC_list.append(representative_fc_concatenate)            
     
     return representative_FC_list
-
-def make_cluster(tempfile):
-    """
-    Parameters
-    ----------    
-    tempfile : string
-        output directory of the single linkage clustering script.
-        This file contains a dataframe which has a set of clusters of reads 
-        generated according to distance parameter.
-        e.g. ../motif_slc_output_polyA_6.txt
-        
-    Returns
-    -------
-    clusters_reads_ends : dictionary of list.
-            key : a tuple of chromID, cluster_ID and direction.
-            value : a list which contains all "potential" cleavage sites with same chromID, cluster_ID and direction.
-            In other words, we make clusters of potential cleavage sites. 
-            This dictionary has all potential cleavage sites in a specific sample and a specific chromosome.
-            
-            In the "get_representative_cleavage_sites" function,
-            the most frequent read end (most frequent potential cleavage sites) 
-            will be selected as a fixed "true"/"representative" cleavage site.
-    """    
-    clusters_read_ends = {}
-    with open(tempfile, "r") as t:
-        for line in t:
-            # clusterID is always encountered first within each cluster
-            if len(line.split())==4:
-                cluster_ID = line.split()[1]
-            if len(line.split())==6:
-                chromID = line.split()[1]
-                direction = line.split()[2]
-                read_start = line.split()[3]
-                read_end = line.split()[4]
-                
-                # fixed cleavage site already considers the direction
-                # read_start = fixed_cleavage_site - 1
-                # read_end = fixed_cleavage_site
-                cleavage_site = read_end
-                    
-                # add read end to the appropriate cluster
-                if (chromID, cluster_ID, direction) not in clusters_read_ends.keys():
-                    clusters_read_ends[(chromID, cluster_ID, direction)] = []
-                clusters_read_ends[(chromID, cluster_ID, direction)].append(cleavage_site)
-    
-    return clusters_read_ends
-
-def write_temp (tempfile, out_put):
-    """
-    Parameters
-    ----------    
-    tempfile : string
-        output directory of the single linkage clustering script.
-        e.g. ../motif_slc_output_polyA_6.txt
-
-    out_put : dataframe
-        A dataframe that contains the output of the single linkage clustering.
-        This dataframe has a set of clusters of reads generated according to distance parameter.
-        
-    Returns
-    -------
-    returns nothing but writes the out_put(output of single linkage clustering) in tempfile.
-    """        
-    with open(tempfile, "a+") as t:
-        t.writelines(str(out_put)) 
-        
-def make_input_slc(in_template, sam, chromosome, distance_param):
-    """
-    Parameters
-    ----------    
-    in_template : string
-        input directory template of the single linkage clustering script. 
-        e.g. ../motif_inputSLC_polyA_"
-        In this function, you make a full input directory of single linkage clustering.
-        e.g. ../motif_inputSLC_polyA_chr6.txt
-
-    sam : bam file
-        A polyA bam file of a specific sample and a specific chromosome
-        
-    chromosome : string
-        chromosome. e.g. chr6
-    
-    distance_param : character. e.g. '4'
-        distance parameter of a single linkage clustering.
-        
-    Returns
-    -------
-    output : dataframe
-        A dataframe that contains the output of the single linkage clustering.
-        This dataframe has a set of clusters of reads generated according to distance parameter.
-    """               
-    # input directory for single linkage clustering
-    input_dir = in_template + chromosome + ".txt"
-    with open(input_dir, "a+") as t:
-        for read in sam.fetch():
-            rev = read.is_reverse
-            chrom = read.reference_name
-            if rev == True:
-                rev = '-'
-            else:
-                rev = '+'
-            Id = read.query_name
-            count = read.mapping_quality
-            
-            start = int(read.get_tag('FC')) -1
-            end = int(read.get_tag('FC'))
-            print('used fixed cleavage site')
-            
-            t.writelines(Id + " " + chrom + " " + rev + " " + str(start) + " " + str(end) + " " + str(count) + "\n")
-        t.close()                    
-    print("###### Creating output file of " + str(chromosome) + " ######")
-    input_dir = str(input_dir)
-    distance_param = str(distance_param)
-    
-    stream = os.popen(f"./single_linkage {input_dir} {distance_param}")
-    output = stream.read()
-    
-    print("###### Output of " + chromosome + "######")
-    print("###### successfully done C++ script " + "######")
-    return output
-
-def generate_input(number, bam_template, in_slc_dir):
-    """
-    Parameters
-    ----------
-    number : character
-        chromosome number (just number). e.g. '6'
-    
-    bam_template : string
-        input polyA bam file template. e.g. 10X_P5_6_polyA_sorted.
-        In this function, it will be converted into a full directory towards bam file of 
-        a specific sample and a specific chromosome.
-        e.g. 10X_P5_6_polyA_sorted_6.bam
-            
-    in_slc_dir : string
-        directory toward a folder that contains input and output of single linkage clustering script (C++ script).
-        
-    Returns
-    -------
-    sam : bam file
-        A polyA bam file of a specific sample and a specific chromosome
-    
-    in_templ : string
-        input directory template of the single linkage clustering script. 
-        e.g. ../motif_inputSLC_polyA_"
-    
-    chrom : string
-        chromosome. e.g. chr6
-    
-    temp_file : string
-        output directory of the single linkage clustering script.
-        e.g. ../motif_slc_output_polyA_6.txt
-    """           
-    chrom = 'chr' + str(number)
-    
-    bamFile = bam_template + "_sorted_" + str(number) + ".bam" 
-    in_templ = in_slc_dir + "/motif_inputSLC_polyA_"
-    temp_dir = in_slc_dir + "/motif_slc_output_polyA_"
-       
-    sam = pysam.AlignmentFile(bamFile, "rb")    
-    temp_file = temp_dir + str(number) + ".txt"
-    
-    return sam, in_templ, chrom, temp_file
 
 def get_motif_info(input_directory):
     """
@@ -1016,27 +837,19 @@ def get_motif_info(input_directory):
     return motif_list  
 
 def get_args():        
-    parser = argparse.ArgumentParser(description="perform motif scoring")
+    parser = argparse.ArgumentParser(description="searching for motives upstream of cleavage sites")
 
-    parser.add_argument('--bam_template', dest = 'bam_template',
+    parser.add_argument('--bed', dest = 'bed',
                         required = True,
-                        help = 'bam_template')
+                        help = 'bed file containing all pA sites in a specific sample')
         
     parser.add_argument('--fasta', dest = 'fasta',
                         required = True,
                         help = 'fasta file dir')
-
-    parser.add_argument('--slc_distance', type = int, dest = 'slc_distance',
-                        required = True,
-                        help = 'single linkage cluster dsitance parameter')
-    
+   
     parser.add_argument('--out_name', dest = 'out_name',
                         required = True,
-                        help = 'name template for motif frequency plot and scores')
-
-    parser.add_argument('--motif_in_slc', dest = 'motif_in_slc',
-                        required = True,
-                        help = 'directory towards motif_in_slc folder')  
+                        help = 'name template for motif frequency plots and motive orders.csv')
     
     parser.add_argument('--window', dest = 'window',
                         required = True,
@@ -1049,76 +862,40 @@ def get_args():
     parser.add_argument('--downstream', dest = 'downstream',
                         required = True,
                         help = 'whether you also look into downstream. and if yes, how far')    
- 
+
     parser.add_argument('--peaks', dest = 'peaks',
                         required = True,
-                        help = 'csv file that contains dictionary where key = motif,\
-                        value = lower or upper position of the peak in the motif frequency plot')  
-
-    parser.add_argument('--species', dest = 'species',
-                        required = True,
-                        help = 'species of the data')
-    
+                        help = 'csv file that contains dictionary of key = motif, value = position of the peak in the frequency plot. based on gtf file')  
+  
     args = parser.parse_args()
     
-    bamTemplate = args.bam_template
-    
+    bed = args.bed
     fasta_dir = args.fasta
-    slc_distance = args.slc_distance
     out_name = args.out_name
-    
-    motif_in_slc = args.motif_in_slc
+
+
     window = int(args.window)
     motif_info_dir = args.motif_info_dir
     downstream =  int(args.downstream)
-    
     peaks = args.peaks
-    species = args.species
     
-    return bamTemplate, fasta_dir, slc_distance, out_name, motif_in_slc, window, motif_info_dir, downstream, peaks, species
+    return bed, fasta_dir, out_name, window, motif_info_dir, downstream, peaks
 
 def run_process():
 
-    bamTemplate, fasta_dir, slc_distance, out_name, motif_in_slc, window, motif_info_dir, downstream, peaks, species = get_args()
-
-    if species == 'mouse':
-        list_of_chromosomes = list(range(1, 20))
-        list_of_chromosomes += ['X', 'Y']
-        
-    elif species == 'human':
-        list_of_chromosomes = list(range(1, 23))
-        list_of_chromosomes += ['X', 'Y']
+    bed, fasta_dir, out_name, window, motif_info_dir, downstream, peaks = get_args()
         
     fasta_file = pysam.FastaFile(fasta_dir)
     motif_infos = get_motif_info(motif_info_dir)
     
     full_dataframe = pd.DataFrame()
-    
-    for elem in list_of_chromosomes:
-        
-        sam, in_templ, chrom, temp_file = generate_input(elem, bamTemplate, motif_in_slc)
-        print("successfully initialized input for chr" + str(elem))
-
-        slc_output = make_input_slc(in_templ, sam, chrom, slc_distance)
-        print("successfully generated output of slc for chr" + str(elem))
-        
-        # temp_file contains output of single linkage clustering
-        write_temp(temp_file, slc_output)
-        print("successful saved slc_output for chr" + str(elem))                                 
-
-        clusters_read_ends = make_cluster(temp_file)
-        print("successful made dictionary for chr" + str(elem))
-        
-        representative_fc_list = get_representative_cleavage_sites(clusters_read_ends)
-        print('successfully got representative cleavage_sites for chr' + str(elem))
-        
-        partial_dataframe = get_partial_dataframe(representative_fc_list, window, fasta_file, motif_infos, downstream)
-        print('successfully got partial dataframe for chr' + str(elem))
-        
-        full_dataframe = pd.concat([full_dataframe, partial_dataframe])
-        print('successfully merged partial dataframe chr' + str(elem) + 'to full dataframe')
-        print('partial full_dataframe is: ' + str(full_dataframe))
             
+    representative_fc_list = get_representative_cleavage_sites(bed)
+    print('successfully got representative cleavage_sites')
+    
+    full_dataframe = get_full_dataframe(representative_fc_list, window, fasta_file, motif_infos, downstream)
+    print('successfully got full dataframe')
+                
     print('full dataframe is: ' + str(full_dataframe))
 
     peaks_dictionary = read_peak_csvs(peaks)
@@ -1128,6 +905,9 @@ def run_process():
     print('successfully got a score for a dataset')
     
     sample_name = '_'.join(out_name.split('_')[0:3])
+    if "UmiDedup" in sample_name:
+        sample_name = "negative_control"
+        
     score_out_name = out_name + "_scores.csv"
     
     score_data = [sample_name, tot_score]

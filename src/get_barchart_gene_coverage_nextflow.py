@@ -16,9 +16,10 @@ import numpy as np
 
 """
 Aim : to draw barcharts of 
-    1) total number of expressed genes from the species of interest.
-    2) number of genes expressed by each sample from dedup bam file.
-    3) number of genes covered by each sample from polyA reads mapping to terminal exons.
+    1) total number of expressed genes from the species of interest
+    2) the number of genes expressed by each sample from dedup bam file
+    3) the number of genes covered by each sample from polyA reads mapping to terminal exons
+    in 1 figure.
 """
 
 def autolabel(rects, ax):
@@ -47,9 +48,9 @@ def plot_barchart(dataframe, file_name, tot_num_genes):
     ----------
     dataframe : dataframe
         a merged dataframe from 
-        1) dataframe containing number of genes expressed by each sample from dedup bam file.
-        2) dataframe containing number of genes covered by each sample from polyA reads mapping to terminal exons.
-            
+        1) dataframe containing the number of genes expressed by each sample from dedup bam file.
+        2) dataframe containing the number of genes covered by each sample from polyA reads mapping to terminal exons.
+          
     file_name : string
         output file name
     
@@ -59,10 +60,10 @@ def plot_barchart(dataframe, file_name, tot_num_genes):
     Returns
     -------
     returns nothing but draws barcharts of 
-    1) total number of expressed genes from the species of interest.
-    2) number of genes expressed by each sample from dedup bam file.
-    3) number of genes covered by each sample from polyA reads mapping to terminal exons.
-    
+    1) total number of expressed genes from the species of interest
+    2) the number of genes expressed by each sample from dedup bam file
+    3) the number of genes covered by each sample from polyA reads mapping to terminal exons
+    in 1 figure.
     """   
     labels = list(dataframe['sample'])
     num_genes_expressed = list(dataframe['#_total_genes_expressed'])
@@ -74,14 +75,14 @@ def plot_barchart(dataframe, file_name, tot_num_genes):
     x = np.array((range(1, len(labels)+1)))
     # the width of the bars
     width = 0.35
-    
     fig, axis = plt.subplots()
+    
     rectangles1 = plt.bar(x - width/2, num_genes_expressed, width, label = "# genes expressed")
     rectangles2 = plt.bar(x + width/2, num_gene_covered, width, label = "# of genes covered")
-    
+                   
     # a single bar of total number of genes 
     rectangles3 = plt.bar(0, tot_num_genes, width, label = "total # genes")
-                          
+                              
     plt.xticks(
     rotation=45, 
     horizontalalignment='right',
@@ -90,19 +91,20 @@ def plot_barchart(dataframe, file_name, tot_num_genes):
     )
     
     # Add some text for labels, title and custom x-axis tick labels, etc.
-    plt.ylim((1, 50000))
+    # plt.ylim((1, 50000))
     plt.yticks(fontsize='x-large')
-    plt.ylabel('number of genes', fontsize = 'x-large')
-    plt.xticks(x, labels)                           
-    autolabel(rectangles1, axis)
-    autolabel(rectangles2, axis)
-    autolabel(rectangles3, axis)
+    plt.ylabel('number of genes or number of reads', fontsize = 'x-large')
+    plt.yscale('log')
+    plt.xticks(x, labels, fontsize='x-large')                           
+#    autolabel(rectangles1, axis)
+#    autolabel(rectangles2, axis)
+#    autolabel(rectangles3, axis)
     
-    plt.legend(loc = 'upper right')
+    plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
     
     plt.rcParams['font.family'] = "Arial"
     plt.savefig(file_name, bbox_inches='tight')
-    
+  
 def merge_dataframe(Dedup_csv_dir, PolyA_csv_dir, tot_gene_dir):
     """
     Parameters
@@ -120,21 +122,18 @@ def merge_dataframe(Dedup_csv_dir, PolyA_csv_dir, tot_gene_dir):
     -------
     merged_dataframe : dataframe
         a merged dataframe from 
-        1) dataframe containing number of genes expressed by each sample from dedup bam file.
-        2) dataframe containing number of genes covered by each sample from polyA reads mapping to terminal exons.
-
+        1) dataframe containing the number of genes expressed by each sample from dedup bam file.
+        2) dataframe containing the number of genes covered by each sample from polyA reads mapping to terminal exons.
+        
     total_num_genes : int
         total number of expressed genes from the species of interest    
     """       
-    dedup_csv = pd.read_csv(Dedup_csv_dir, header = None)
-    polyA_csv = pd.read_csv(PolyA_csv_dir, header = None)
-    total_gene_csv = pd.read_csv(tot_gene_dir, header = None)
+    dedup_csv = pd.read_csv(Dedup_csv_dir, header = None, names = ['sample', '#_total_genes_expressed'])
+    polyA_csv = pd.read_csv(PolyA_csv_dir, header = None, names = ['sample', 'gene_covered'])
+    total_gene_csv = pd.read_csv(tot_gene_dir, header = None, names = ['gtf', 'total_#_genes'])
+        
+    merged_dataframe = dedup_csv.merge(polyA_csv, left_on = 'sample', right_on = 'sample', how = 'inner')
     
-    dedup_csv.columns = ['sample', '#_total_genes_expressed']
-    polyA_csv.columns = ['sample', 'gene_covered']
-    total_gene_csv.columns = ['gtf', 'total_#_genes']                         
-    
-    merged_dataframe = dedup_csv.merge(polyA_csv, left_on = 'sample', right_on = 'sample', how = 'inner')    
     total_num_genes = int(total_gene_csv['total_#_genes'])
                              
     return merged_dataframe, total_num_genes
@@ -153,19 +152,19 @@ def get_inputs():
     parser.add_argument('--total_gene_dir', dest = 'total_gene_dir',
                         required = True,
                         help = 'csv file containing total number of genes')
-    
+   
     parser.add_argument('--coverage_out_file', dest = 'coverage_out_file',
                         required = True,
                         help = 'creates a bar chart of gene coverage by each sample')
-
 
     args = parser.parse_args()
     
     dedup_csv_dir = args.dedup_csv_dir
     polyA_csv_dir = args.polyA_csv_dir
     total_gene_dir = args.total_gene_dir
+        
     coverage_out_file = args.coverage_out_file
-
+    
     
     return dedup_csv_dir, polyA_csv_dir, total_gene_dir, coverage_out_file
     

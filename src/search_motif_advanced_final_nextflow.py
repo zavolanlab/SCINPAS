@@ -11,20 +11,49 @@ import matplotlib.pyplot as plt
 import argparse
 import csv
 import numpy as np
-import os
 from collections import Counter
 import pandas as pd
 import statistics
 """
-Aim 1 : Using all reads in a particular sample and class, draw all 18 motif frequency plots.
-Aim 2 : Using all reads in a particular sample and class, draw an overlaid motif frqeuncy plot which contains all 18 motif frequency plots.
-Aim 3 : Using all reads in a particular sample and class, compute a motif score.(1 score per 1 sample)
-Aim 4 : Using all reads in a particular sample and class, save order of motives 
+Aim 1 : Using all pA clusteres in a particular sample and class, draw all 18 motif frequency plots.
+Aim 2 : Using all pA clusteres in a particular sample and class, draw an overlaid motif frqeuncy plot which contains all 18 motif frequency plots.
+Aim 3 : Using all pA clusteres in a particular sample and class, compute a motif score.(1 score per 1 sample)
+Aim 4 : Using all pA clusteres in a particular sample and class, save order of motives 
         (from highest frequency to lowest frequency) in the csv.
 
 Aim 5 : Using all reads in a particular sample and class, save exact peak positions for each motif. 
         (peak positions and score are saved together)
 """
+def modify_class_name(class_type):
+    """
+    Parameters
+    ----------        
+    class_type : string
+        class of reads. (either annotated(4), unannotated(5), intronic(7), intergenic(8) or exonic(10))
+           
+    Returns
+    -------
+    modified_class_name : string
+        modified class name of reads in order to use same terminology as paper. 
+        (either ATE, UTE, I, IG, NTE)
+    """  
+    if class_type == 4:
+        modified_class_name = "ATE"
+
+    elif class_type == 5:
+        modified_class_name = "UTE"
+ 
+    elif class_type == 7:
+        modified_class_name = "I"
+
+    elif class_type == 8:
+        modified_class_name = "IG"
+        
+    elif class_type == 10:
+        modified_class_name = "NTE"        
+        
+    return modified_class_name
+
 def write_out(row_data, o_file):
     """
     Parameters
@@ -797,246 +826,32 @@ def get_full_dataframe(total_representative_cs, until, Fasta_file, m_list, down)
 
     return full_dataframe
 
-def get_representative_cleavage_sites(dictionary):
+def get_representative_cleavage_sites(tempfile):
     """
     Parameters
     ----------    
-    dictionary : dictionary of list.
-            key : a tuple of chromID, cluster_ID and direction.
-            value : a list which contains all "potential" cleavage sites with same chromID, cluster_ID and direction.
-            This dictionary has all potential cleavage sites in a specific sample, a specific class and a specific chromosome.
-            
-            The most frequent read end (most frequent potential cleavage sites) 
-            amongst read ends with same chromID, cluster_ID and direction 
-            will be selected as a fixed "true"/"representative" cleavage site.
+    tempfile : string
+        bed file of specific class (e.g. intergenic). each row is a cluster of polyA reads with score.
+        cluster_id in each row contains information about representative fixed cleavage site.
         
     Returns
     -------
     representative_FC_list : list of string
         a list where each element is chromID_direction_representative_fc
-
-    """        
+    """      
     representative_FC_list = []
-    # key = (chromID, cluster_ID, direction)
-    # value = fixed cleavage sites
-    for elem in dictionary.keys():
-        # read_ends = [181, 185, 185, 190, 190, 190, 190, 190, 190......]
-        read_ends = dictionary[elem]
-        # Counter(read_ends) = {181:1, 185:2, 190:6}
-        # read_ends_keys = [181, 185, 190]
-        read_ends_keys = list(Counter(read_ends).keys())
-        # read_ends_values = [1, 2, 6]
-        read_ends_values = list(Counter(read_ends).values())
-        
-        representative_fc = read_ends_keys[read_ends_values.index(max(read_ends_values))]
-        
-        chromId = elem[0]
-        direction = elem[2]
-        # df does not seem to be able to access row by tuple. Hence just concatenate them
-        representative_fc_concatenate = chromId + '_' + direction + '_' + representative_fc
-        representative_FC_list.append(representative_fc_concatenate)
+    with open(tempfile, "r") as t:
+        for line in t:          
+            cluster_id = line.split()[3]
+            chromId = cluster_id.split(':')[0]
+            representative_fc = cluster_id.split(':')[1]
+            direction = cluster_id.split(':')[2]
+            
+            representative_fc_concatenate = chromId + '_' + direction + '_' + representative_fc
+            representative_FC_list.append(representative_fc_concatenate)            
     
     return representative_FC_list
-
-def make_cluster(tempfile):
-    """
-    Parameters
-    ----------    
-    tempfile : string
-        output directory of the single linkage clustering script.
-        This file contains a dataframe which has a set of clusters of reads 
-        generated according to distance parameter.
-        e.g. ../motif_slc_output_intergenic_19.txt
-        
-    Returns
-    -------
-    clusters_reads_ends : dictionary of list.
-            key : a tuple of chromID, cluster_ID and direction.
-            value : a list which contains all "potential" cleavage sites with same chromID, cluster_ID and direction.
-            In other words, we make clusters of potential cleavage sites. 
-            This dictionary has all potential cleavage sites in a specific sample, a specific class and a specific chromosome.
-            
-            In the "get_representative_cleavage_sites" function,
-            the most frequent read end (most frequent potential cleavage sites) 
-            will be selected as a fixed "true"/"representative" cleavage site.
-    """      
-    clusters_read_ends = {}
-    with open(tempfile, "r") as t:
-        for line in t:
-            # clusterID is always encountered first within each cluster
-            if len(line.split())==4:
-                cluster_ID = line.split()[1]
-            if len(line.split())==6:
-                chromID = line.split()[1]
-                direction = line.split()[2]
-                read_start = line.split()[3]
-                read_end = line.split()[4]
-                
-                # fixed cleavage site already considers the direction
-                # read_start = fixed_cleavage_site - 1
-                # read_end = fixed_cleavage_site
-                cleavage_site = read_end
-                    
-                # add read end to the appropriate cluster
-                if (chromID, cluster_ID, direction) not in clusters_read_ends.keys():
-                    clusters_read_ends[(chromID, cluster_ID, direction)] = []
-                clusters_read_ends[(chromID, cluster_ID, direction)].append(cleavage_site)
-    
-    return clusters_read_ends
-
-def write_temp (tempfile, out_put):
-    """
-    Parameters
-    ----------    
-    tempfile : string
-        output directory of the single linkage clustering script.
-        e.g. ../motif_slc_output_intergenic_19.txt
-
-    out_put : dataframe
-        A dataframe that contains the output of the single linkage clustering.
-        This dataframe has a set of clusters of reads generated according to distance parameter.
-        
-    Returns
-    -------
-    returns nothing but writes the out_put(output of single linkage clustering) in tempfile.
-    """            
-    with open(tempfile, "a+") as t:
-        t.writelines(str(out_put))           
-
-def make_input_slc(in_template, sam, chromosome, distance_param):
-    """
-    Parameters
-    ----------    
-    in_template : string
-        input directory template of the single linkage clustering script. 
-        e.g. ../10X_P5_6_intergenic_sorted
-        In this function, you make a full input directory of single linkage clustering.
-        e.g. ../10X_P5_6_intergenic_sorted_19.bam
-
-    sam : bam file
-        A bam file of a specific sample, a specific class and a specific chromosome
-        
-    chromosome : string
-        chromosome. e.g. chr19
-    
-    distance_param : character. e.g. '4'
-        distance parameter of a single linkage clustering.
-        
-    Returns
-    -------
-    output : dataframe
-        A dataframe that contains the output of the single linkage clustering.
-        This dataframe has a set of clusters of reads generated according to distance parameter.
-    """     
-    # input directory for single linkage clustering
-    input_dir = in_template + chromosome + ".txt"
-    with open(input_dir, "a+") as t:
-        for read in sam.fetch():
-            rev = read.is_reverse
-            chrom = read.reference_name
-            if rev == True:
-                rev = '-'
-            else:
-                rev = '+'
-            Id = read.query_name
-            count = read.mapping_quality
-            
-            start = int(read.get_tag('FC')) -1
-            end = int(read.get_tag('FC'))
-            print('used fixed cleavage site')
-            t.writelines(Id + " " + chrom + " " + rev + " " + str(start) + " " + str(end) + " " + str(count) + "\n")
-        t.close()                    
-    print("###### Creating output file of " + str(chromosome) + " ######")
-    input_dir = str(input_dir)
-    distance_param = str(distance_param)
-    
-    stream = os.popen(f"./single_linkage {input_dir} {distance_param}")
-    output = stream.read()
-    
-    print("###### Output of " + chromosome + "######")
-    print("###### successfully done C++ script " + "######")
-    return output
-        
-def generate_input(number, type_of_reads, bam_template, in_slc_dir):
-    """
-    Parameters
-    ----------
-    number : character
-        chromosome number (just number). e.g. '19'
-    
-    bam_template : string
-        input bam file template of a specific sample and a specific class. e.g. 10X_P5_6_intergenic_sorted
-        In this function, it will be converted into a full directory towards bam file of 
-        a specific sample, a specific class and a specific chromosome.
-        e.g. 10X_P5_6_intergenic_sorted_19.bam
-            
-    in_slc_dir : string
-        directory toward a folder that contains input and output of single linkage clustering script (C++ script).
-        
-    Returns
-    -------
-    sam : bam file
-        bam file of a specific sample, a specific class and a specific chromosome
-    
-    in_templ : string
-        input directory template of the single linkage clustering script. 
-        e.g. ../motif_inputSLC_intergenic_
-    
-    chrom : string
-        chromosome. e.g. chr6
-    
-    temp_file : string
-        output directory of the single linkage clustering script.
-        e.g. ../motif_slc_output_intergenic_19.txt
-    """     
-    chrom = 'chr' + str(number)
-    # annotated
-    if type_of_reads == 4:
-        bamFile = bam_template + str(number) + "_sorted.bam" 
-        in_templ = in_slc_dir + "/motif_inputSLC_below_"
-        temp_dir = in_slc_dir + "/motif_slc_output_below_"
-
-    # unannotated
-    elif type_of_reads == 5:
-        bamFile = bam_template + str(number) + "_sorted.bam"
-        in_templ = in_slc_dir + "/motif_inputSLC_above_"
-        temp_dir = in_slc_dir + "/motif_slc_output_above_"
-   
-    # nonpolyA
-    elif type_of_reads == 6:
-        bamFile = bam_template + "_sorted_" + str(number) + ".bam"
-        in_templ = in_slc_dir + "/motif_inputSLC_nonpolyA_"
-        temp_dir = in_slc_dir + "/motif_slc_output_nonpolyA_"  
-        
-    # intronic
-    elif type_of_reads == 7:
-        bamFile = bam_template + "_sorted_" + str(number) + ".bam"
-        in_templ = in_slc_dir + "/motif_inputSLC_intronic_"
-        temp_dir = in_slc_dir + "/motif_slc_output_intronic_" 
-        
-    # intergenic
-    elif type_of_reads == 8:
-        bamFile = bam_template + "_sorted_" + str(number) + ".bam"
-        in_templ = in_slc_dir + "/motif_inputSLC_intergenic_"
-        temp_dir = in_slc_dir + "/motif_slc_output_intergenic_" 
-    
-    # internal priming
-    elif type_of_reads == 9:
-        bamFile = bam_template + "_sorted_" + str(number) + ".bam"
-        in_templ = in_slc_dir + "/motif_inputSLC_internal_priming_"
-        temp_dir = in_slc_dir + "/motif_slc_output_internal_priming_"        
-    
-    # exonic polyA
-    elif type_of_reads == 10:
-        bamFile = bam_template + "_sorted_" + str(number) + ".bam"
-        in_templ = in_slc_dir + "/motif_inputSLC_exonicA_"
-        temp_dir = in_slc_dir + "/motif_slc_output_exonicA_"
-        
-    sam = pysam.AlignmentFile(bamFile, "rb")    
-    temp_file = temp_dir + str(number) + ".txt"
-    
-    return sam, in_templ, chrom, temp_file
-
+       
 def get_motif_info(input_directory):
     """
     Parameters
@@ -1065,18 +880,14 @@ def get_motif_info(input_directory):
 def get_args():        
     parser = argparse.ArgumentParser(description="searching for motives upstream of cleavage sites")
 
-    parser.add_argument('--bam_template', dest = 'bam_template',
+    parser.add_argument('--bed', dest = 'bed',
                         required = True,
-                        help = 'specific class of reads')
+                        help = 'bed file containing pA sites in a specific sample and class')
         
     parser.add_argument('--fasta', dest = 'fasta',
                         required = True,
                         help = 'fasta file dir')
-
-    parser.add_argument('--slc_distance', type = int, dest = 'slc_distance',
-                        required = True,
-                        help = 'single linkage cluster dsitance parameter')
-    
+   
     parser.add_argument('--out_name', dest = 'out_name',
                         required = True,
                         help = 'name template for motif frequency plots and motive orders.csv')
@@ -1084,10 +895,6 @@ def get_args():
     parser.add_argument('--annotated', type = int, dest = 'annotated',
                         required = True,
                         help = 'which reads did you recieve?')    
-
-    parser.add_argument('--motif_in_slc', dest = 'motif_in_slc',
-                        required = True,
-                        help = 'directory towards motif_in_slc folder')  
     
     parser.add_argument('--window', dest = 'window',
                         required = True,
@@ -1104,66 +911,36 @@ def get_args():
     parser.add_argument('--peaks', dest = 'peaks',
                         required = True,
                         help = 'csv file that contains dictionary of key = motif, value = position of the peak in the frequency plot. based on gtf file')  
-
-    parser.add_argument('--species', dest = 'species',
-                        required = True,
-                        help = 'species of the data')
-    
+  
     args = parser.parse_args()
     
-    bamTemplate = args.bam_template
+    bed = args.bed
+   
     fasta_dir = args.fasta
-    slc_distance = args.slc_distance
+
     out_name = args.out_name
     annotated = args.annotated
-    motif_in_slc = args.motif_in_slc
+
     window = int(args.window)
     motif_info_dir = args.motif_info_dir
     downstream =  int(args.downstream)
     peaks = args.peaks
-    species = args.species
     
-    return bamTemplate, fasta_dir, slc_distance, out_name, annotated, motif_in_slc, window, motif_info_dir, downstream, peaks, species
+    return bed, fasta_dir, out_name, annotated, window, motif_info_dir, downstream, peaks
 
 def run_process():
 
-    bamTemplate, fasta_dir, slc_distance, out_name, annotated, motif_in_slc, window, motif_info_dir, downstream, peaks, species = get_args()
-
-    if species == 'mouse':
-        list_of_chromosomes = list(range(1, 20))
-        list_of_chromosomes += ['X', 'Y']
-        
-    elif species == 'human':
-        list_of_chromosomes = list(range(1, 23))
-        list_of_chromosomes += ['X', 'Y']
+    bed, fasta_dir, out_name, annotated, window, motif_info_dir, downstream, peaks = get_args()
         
     fasta_file = pysam.FastaFile(fasta_dir)
-    motif_infos = get_motif_info(motif_info_dir)
-    
+    motif_infos = get_motif_info(motif_info_dir) 
     print('successfully got motif infos')
     
     print('motif info is: ' + str(motif_infos))
     total_represenatative_fc = []
     
-    for elem in list_of_chromosomes:
-        sam, in_templ, chrom, temp_file = generate_input(elem, annotated, bamTemplate, motif_in_slc)
-        print("successfully initialized input for chr" + str(elem))
-
-        slc_output = make_input_slc(in_templ, sam, chrom, slc_distance)
-        print("successfully generated output of slc for chr" + str(elem))
-        
-        # temp_file contains output of single linkage clustering
-        write_temp(temp_file, slc_output)
-        print("successful saved slc_output for chr" + str(elem))                                 
-
-        clusters_read_ends = make_cluster(temp_file)
-        print("successful made dictionary for chr" + str(elem))
-        
-        representative_fc_list = get_representative_cleavage_sites(clusters_read_ends)
-        print('successfully got representative cleavage_sites for chr' + str(elem))
-        
-        total_represenatative_fc += representative_fc_list
-        print('successfully updated representative fixed cleavage sites for chr' +str(elem))
+    total_represenatative_fc = get_representative_cleavage_sites(bed)
+    print('successfully got total representative cleavage_sites.')
     
     print('total_representative_fixed_cleavage sites: ' + str(total_represenatative_fc))
     
@@ -1183,6 +960,8 @@ def run_process():
     sample_name = '_'.join(out_name.split('_')[0:3])
     # e.g. annotated
     sub_header_name = out_name.split('_')[3]
+    # modify class name so that it is compatible with the terminology used in the paper.
+    sub_header_name = modify_class_name(annotated)
     
     ordered_motives.insert(0, sample_name)
     ordered_motives.insert(1, sub_header_name)

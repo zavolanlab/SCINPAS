@@ -9,49 +9,15 @@ Created on Mon May  9 16:28:57 2022
 import csv
 import argparse
 
+
+
+
+
+
 """
 Aim: From a count csv file which contains the number of counts in each class and in each sample,
 split according to the sample such that you have csv file containing the number of counts in all classes.
 """
-
-def read_counts_csv(input_directory):
-    """
-    Parameters
-    ----------
-    input_directory : string
-        input count csv file which contains the number of counts in each class and in each sample.
-
-    Returns
-    -------
-    counts_dict : dictionary
-        a dictionary which contains the number of counts in each class and in each sample.
-    """
-    
-    counts_dict = {}
-    with open (input_directory) as csvfile:
-        spamreader = csv.reader(csvfile)
-        # key (1st column) is "sample name"
-        for row in spamreader:
-            key = row[0]
-            # UmiRaw is the raw data used for negative control.
-            # UmiDedup is the UMI-tools deduplicated data that is used for negative control.
-            # because these bam file was joined at different stages of the pipeline, the name has to be unified. 
-            if "UmiRaw" in row[0]:
-                key = key.split('U')[0] + "UmiDedup" 
-            # 2nd column is "type"
-            # 3rd column is "counts"
-            if key not in counts_dict.keys():
-                counts_dict[key] = ([], [])
-            # UMI-tools deduplicated data does not have intergenic or intronic reads.
-            # Hence do not plot bar plot for intergenic or intronic reads
-            if "UmiDedup" in row[0]:
-                if row[1] == "intronic" or row[1] == "intergenic":
-                    print("Passed")
-                    # continue makes you go next iteration at this point
-                    continue
-            counts_dict[key][0].append(row[1])
-            counts_dict[key][1].append(float(row[2]))
-    return counts_dict
 
 def find_index(n_list, element):
     """
@@ -87,20 +53,20 @@ def sort_lists(names, counts):
     -------
     organized_names : list
         sorted list of each class name (type) of reads according to our need.
-        we want in this order: 'original', 'deduplicated', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A'
+        we want in this order: 'original', 'deduplicated', 'non-PATR', 'softclipped', 'PATR', 'TE', 'ATE', 'UTE', 'NTE', 'I', 'IG'
     
     organized_counts : list
         sorted list of the number of reads in each class according to our need.
-        we want in this order: 'original', 'deduplicated', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A'
+        we want in this order: 'original', 'deduplicated', 'non-PATR', 'softclipped', 'PATR', 'TE', 'ATE', 'UTE', 'NTE', 'I', 'IG'
     """
     
-    # negative control does not have intronic and intergenic reads
-    if len(names) == 6:
-        organized_names = ['original', 'deduplicated', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A']
-    elif len(names) == 8:
-        organized_names = ['original', 'deduplicated', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A', 'intronic', 'intergenic']
+    organized_names = ['original', 'deduplicated', 'non-PATR', 'softclipped', 'PATR', 'TE', 'ATE', 'UTE', 'NTE', 'I', 'IG']
+    
+    print("names: " + str(names))
+    print("counts: " + str(counts))
     indices = [find_index(names, elem) for elem in organized_names]
     organized_counts = [counts[elem] for elem in indices]
+    
     return organized_names, organized_counts
     
 def write_out(samples, names_list, counts_list):
@@ -147,12 +113,53 @@ def split_csv(dict_count):
         sample_name = key
         names = val[0]
         counts = val[1]
+        
+        if "negative_control" in sample_name:
+            # recover original file name so that later you can put csv and figure in the original folder.
+            # sample_name = negative_control(A10X_P7_14UmiDedup)
+            sample_name = sample_name.split('(')[1].split(')')[0]
+                          
         if len(names) == len(counts):
             sample_names = [sample_name for i in range(len(names))]
             write_out(sample_names, names, counts)
             print('successfully generated split csv file for 1 sample')
+            
         else:
             print('lengths do not match')
+
+def read_counts_csv(input_directory):
+    """
+    Parameters
+    ----------
+    input_directory : string
+        input count csv file which contains the number of counts in each class and in each sample.
+
+    Returns
+    -------
+    counts_dict : dictionary
+        a dictionary which contains the number of counts in each class and in each sample.
+    """
+    
+    counts_dict = {}
+    with open (input_directory) as csvfile:
+        spamreader = csv.reader(csvfile)
+        # key (1st column) is "sample name"
+        for row in spamreader:
+            key = row[0]
+            # 2nd column is "type"
+            # 3rd column is "counts"
+            if key not in counts_dict.keys():
+                counts_dict[key] = ([], [])
+            # UMI-tools deduplicated data does not have intergenic or intronic reads.
+            # Hence do not plot bar plot for intergenic or intronic reads
+            if "negative_control" in row[0]:
+                if int(row[2]) == 0 or int(row[2]) == 0:
+                    print("Passed")
+                    # continue makes you go next iteration at this point
+                    continue
+            counts_dict[key][0].append(row[1])
+            counts_dict[key][1].append(int(row[2]))
+    return counts_dict
 
 def get_inputs():
     

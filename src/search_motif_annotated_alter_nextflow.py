@@ -772,187 +772,38 @@ def get_full_dataframe(total_representative_cs, until, Fasta_file, m_list, down)
             
     return full_dataframe
 
-def get_representative_cleavage_sites(dictionary):
+def get_representative_cleavage_sites(tempfile):
     """
     Parameters
     ----------    
-    dictionary : dictionary of list.
-            key : a tuple of chromID, cluster_ID and direction.
-            value : a list which contains all "potential" cleavage sites with same chromID, cluster_ID and direction.
-            This dictionary has all potential cleavage sites in the terminal_exons.bed file (a subset of gtf file).
-            
-            The most frequent read end (most frequent potential cleavage sites) 
-            amongst read ends with same chromID, cluster_ID and direction 
-            will be selected as a "true"/"representative" cleavage site.
+    tempfile : string
+        bed file containing all terminal exons of a gtf file. each row is a terminal exon.
         
     Returns
     -------
     representative_FC_list : list of string
         a list where each element is chromID_direction_representative_fc
-
     """      
     representative_FC_list = []
-    # key = (chromID, cluster_ID, direction)
-    # value = fixed cleavage sites
-    for elem in dictionary.keys():
-        # read_ends = [181, 185, 185, 190, 190, 190, 190, 190, 190......]
-        read_ends = dictionary[elem]
-        # Counter(read_ends) = {181:1, 185:2, 190:6}
-        # read_ends_keys = [181, 185, 190]
-        read_ends_keys = list(Counter(read_ends).keys())
-        # read_ends_values = [1, 2, 6]
-        read_ends_values = list(Counter(read_ends).values())
-        
-        representative_fc = read_ends_keys[read_ends_values.index(max(read_ends_values))]
-        
-        chromId = elem[0]
-        direction = elem[2]
-        # df does not seem to be able to access row by tuple. Hence just concatenate them
-        representative_fc_concatenate = chromId + '_' + direction + '_' + representative_fc
-        representative_FC_list.append(representative_fc_concatenate)
+    with open(tempfile, "r") as t:
+        for line in t:          
+            chromId = line.split()[0]
+            read_start = line.split()[1]
+            read_end = line.split()[2]
+            print('line: ' + str(line.split()))
+            print('score: ' + str(line.split()[4]))
+            direction = line.split()[5]
+            
+            if direction == '-':
+                representative_fc = read_start
+                
+            elif direction == '+':
+                representative_fc = read_end  
+                      
+            representative_fc_concatenate = chromId + '_' + direction + '_' + representative_fc
+            representative_FC_list.append(representative_fc_concatenate)            
     
     return representative_FC_list
- 
-def make_cluster(tempfile):
-    """
-    Parameters
-    ----------    
-    tempfile : string
-        output directory of the single linkage clustering script.
-        This file contains a dataframe which has a set of clusters of reads 
-        generated according to distance parameter.
-        e.g. ../motif_slc_output_known_.txt
-        
-    Returns
-    -------
-    clusters_reads_ends : dictionary of list.
-            key : a tuple of chromID, cluster_ID and direction.
-            value : a list which contains all "potential" cleavage sites with same chromID, cluster_ID and direction.
-            In other words, we make clusters of potential cleavage sites. 
-            This dictionary has all potential cleavage sites in the terminal_exons.bed file (a subset of gtf file).
-            
-            In the "get_representative_cleavage_sites" function,
-            the most frequent read end (most frequent potential cleavage sites) 
-            will be selected as a "true"/"representative" cleavage site.
-    """        
-    clusters_read_ends = {}
-    with open(tempfile, "r") as t:
-        for line in t:
-            # clusterID is always encountered first within each cluster
-            if len(line.split())==4:
-                cluster_ID = line.split()[1]
-            if len(line.split())==6:
-                chromID = line.split()[1]
-                direction = line.split()[2]
-                read_start = line.split()[3]
-                read_end = line.split()[4]
-                
-                if direction == '-':
-                    cleavage_site = read_start
-                elif direction == '+':
-                    cleavage_site = read_end
-                    
-                # add read end to the appropriate cluster
-                if (chromID, cluster_ID, direction) not in clusters_read_ends.keys():
-                    clusters_read_ends[(chromID, cluster_ID, direction)] = []
-                clusters_read_ends[(chromID, cluster_ID, direction)].append(cleavage_site)
-    
-    return clusters_read_ends
-
-def write_temp (tempfile, out_put):
-    """
-    Parameters
-    ----------    
-    tempfile : string
-        output directory of the single linkage clustering script.
-        e.g. ../motif_slc_output_known_.txt
-
-    out_put : dataframe
-        A dataframe that contains the output of the single linkage clustering.
-        This dataframe has a set of clusters of reads generated according to distance parameter.
-        
-    Returns
-    -------
-    returns nothing but writes the out_put(output of single linkage clustering) in tempfile.
-    """        
-    with open(tempfile, "a+") as t:
-        t.writelines(str(out_put))  
-        
-def make_input_slc(in_template, terminal_exons, distance_param):
-    """
-    Parameters
-    ----------    
-    in_template : string
-        input directory template of the single linkage clustering script. 
-        e.g. ../motif_inputSLC_known_"
-        In this function, you make a full input directory of single linkage clustering.
-        e.g. ../motif_inputSLC_known_.txt
-
-    terminal_exons : bed file
-        bed file containing terminal exons.
-    
-    distance_param : character. e.g. '4'
-        distance parameter of a single linkage clustering.
-        
-    Returns
-    -------
-    output : dataframe
-        A dataframe that contains the output of the single linkage clustering.
-        This dataframe has a set of clusters of reads generated according to distance parameter.
-    """         
-    # input directory for single linkage clustering
-    input_dir = in_template + ".txt"
-    with open(input_dir, "a+") as t:
-        with open (terminal_exons) as e:
-            for line in e:
-                chromosome = line.strip().split('\t')[0]
-                start_pos = line.strip().split('\t')[1]
-                end_pos = line.strip().split('\t')[2]
-                gene_id = line.strip().split('\t')[3]
-                score = line.strip().split('\t')[4]
-                direction = line.strip().split('\t')[5]
-                
-                Id = gene_id + '_' + start_pos + '_' + end_pos
-                count = score
-                
-                if 'chr' in chromosome:
-                    t.writelines(Id + " " + chromosome + " " + direction + " " + str(start_pos) + " " + str(end_pos) + " " + str(count) + "\n")
-        t.close()                    
-    print("###### Creating output file ######")
-    input_dir = str(input_dir)
-    distance_param = str(distance_param)
-    
-    stream = os.popen(f"./single_linkage {input_dir} {distance_param}")
-    output = stream.read()
-    
-    print("###### Output ######")
-    print("###### successfully done C++ script " + "######")
-    return output
-         
-def generate_input(in_slc_dir):
-    """
-    Parameters
-    ----------            
-    in_slc_dir : string
-        directory toward a folder that contains input and output of single linkage clustering script (C++ script).
-        
-    Returns
-    -------    
-    in_templ : string
-        input directory template of the single linkage clustering script. 
-        e.g. ../motif_inputSLC_known_"
-
-    temp_file : string
-        output directory of the single linkage clustering script.
-        e.g. ../motif_slc_output_known_.txt
-        
-    """    
-    in_templ = in_slc_dir + "/motif_inputSLC_known_"
-    temp_dir = in_slc_dir + "/motif_slc_output_known_"
-   
-    temp_file = temp_dir + ".txt"
-    
-    return in_templ, temp_file
 
 def get_motif_info(input_directory):
     """
@@ -989,18 +840,10 @@ def get_args():
     parser.add_argument('--fasta', dest = 'fasta',
                         required = True,
                         help = 'fasta file dir')
-
-    parser.add_argument('--slc_distance', type = int, dest = 'slc_distance',
-                        required = True,
-                        help = 'single linkage cluster dsitance parameter')
     
     parser.add_argument('--out_name', dest = 'out_name',
                         required = True,
                         help = 'name template for motif frequency plots, peak_positions.csv and motive orders.csv')
-
-    parser.add_argument('--motif_in_slc', dest = 'motif_in_slc',
-                        required = True,
-                        help = 'directory towards motif_in_slc folder')  
     
     parser.add_argument('--window', dest = 'window',
                         required = True,
@@ -1018,45 +861,27 @@ def get_args():
     
     terminal_exons = args.terminal_exons
     fasta_dir = args.fasta
-    slc_distance = args.slc_distance
     out_name = args.out_name
     
-    motif_in_slc = args.motif_in_slc
     window = int(args.window)
     motif_info_dir = args.motif_info_dir
     downstream =  int(args.downstream)
     
-    return terminal_exons, fasta_dir, slc_distance, out_name, motif_in_slc, window, motif_info_dir, downstream
+    return terminal_exons, fasta_dir, out_name, window, motif_info_dir, downstream
 
 def run_process():
 
-    terminal_exons, fasta_dir, slc_distance, out_name, motif_in_slc, window, motif_info_dir, downstream = get_args()
+    terminal_exons, fasta_dir, out_name, window, motif_info_dir, downstream = get_args()
         
     fasta_file = pysam.FastaFile(fasta_dir)
     motif_infos = get_motif_info(motif_info_dir)
     print('successfully got motif infos')
     
     total_represenatative_fc = []
-    
-    in_templ, temp_file = generate_input(motif_in_slc)
-    print("successfully initialized input" )
-
-    slc_output = make_input_slc(in_templ, terminal_exons, slc_distance)
-    print("successfully generated output of slc")
-    
-    # temp_file contains output of single linkage clustering
-    write_temp(temp_file, slc_output)
-    print("successfully saved slc_output")                                 
-
-    clusters_read_ends = make_cluster(temp_file)
-    print("successfully made dictionary" )
-    
-    representative_fc_list = get_representative_cleavage_sites(clusters_read_ends)
-    print('successfully got representative cleavage_sites')
-    
-    total_represenatative_fc += representative_fc_list
-    print('successfully updated representative fixed cleavage sites')
         
+    total_represenatative_fc = get_representative_cleavage_sites(terminal_exons)
+    print('successfully got total representative cleavage_sites')
+     
     full_dataframe = get_full_dataframe(total_represenatative_fc, window, fasta_file, motif_infos, downstream)
     print('successfully got full dataframe')
         

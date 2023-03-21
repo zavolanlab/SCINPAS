@@ -45,20 +45,29 @@ def get_last_exons(df):
     last_exons = []
     for index, row in df.iterrows():
         if row['feature'] == 'exon' and row['gene_id'] != '' and row['transcript_id'] != '' and row['exon_id'] != '':
-            if row['transcript_support_level'] != 'NA' and row['transcript_support_level'] != '' and int(float(row['transcript_support_level'])) <= 3:
-                # in cellranger version gtf, key is gene_type rather than gene_biotype
-                if row['gene_type'] == 'protein_coding' or row['gene_type'] == 'lncRNA':
-                    if row['gene_id'] not in final_dict.keys():
-                        final_dict[row['gene_id']] = {}
-                    # check if 2nd key exists
-                    # 1st key = gene_id
-                    # 2nd key = transcript_id
-                    if row['transcript_id'] not in final_dict[row['gene_id']].keys():
-                        final_dict[row['gene_id']][row['transcript_id']] = []
-                    # save as gene_name for visualization in IGV use gene_id for practical use.
-                    chromosome_id = row['seqname']
-                    final_dict[row['gene_id']][row['transcript_id']].append((chromosome_id, row['start'], row['end'], 
-                          row['gene_id'], row['transcript_support_level'], row['strand']))
+            # in cellranger version gtf, key is gene_type rather than gene_biotype
+            if row['gene_type'] == 'protein_coding' or row['gene_type'] == 'lncRNA':
+                if row['gene_id'] not in final_dict.keys():
+                    final_dict[row['gene_id']] = {}
+                # check if 2nd key exists
+                # 1st key = gene_id
+                # 2nd key = transcript_id
+                if row['transcript_id'] not in final_dict[row['gene_id']].keys():
+                    final_dict[row['gene_id']][row['transcript_id']] = []
+                # save as gene_name for visualization in IGV use gene_id for practical use.
+                chromosome_id = row['seqname']
+                
+                if row['transcript_support_level'] == 'NA':
+                    score = 2100
+                
+                elif row['transcript_support_level'] == '':
+                    score = 2000
+                   
+                else:
+                    score = row['transcript_support_level']
+                    
+                final_dict[row['gene_id']][row['transcript_id']].append((chromosome_id, row['start'], row['end'], 
+                      row['gene_id'], score, row['strand']))
     
     # get the most distal exon.
     for first_key in final_dict.keys():
@@ -128,7 +137,6 @@ def remove_duplicated_exons (final_df):
     -------
     final_deduplicated_df : dataframe
         dataframe containing terminal exons but removed terminal exons that are exactly identical.
-        
     """
     final_deduplicated_df = pd.DataFrame(columns = ['seqid', 'start', 'end', 'id', 'score', 'strand'])
     for index, row in final_df.iterrows():
@@ -136,10 +144,13 @@ def remove_duplicated_exons (final_df):
             current_row = final_df.iloc[index]
             next_row = final_df.iloc[index+1]
             same = check_same_exon (current_row, next_row)
+            
             if same:
                 continue
+            
             else:
                 final_deduplicated_df = final_deduplicated_df.append(current_row, ignore_index = True)
+                
     final_deduplicated_df.sort_values(by=['seqid', 'id', 'start', 'end'], inplace = True)          
     
     return final_deduplicated_df     

@@ -39,7 +39,7 @@ def read_counts(input_directory):
         spamreader = csv.reader(csvfile)
         for row in spamreader:
             names_list.append(row[0])
-            counts_list.append(float(row[1]))
+            counts_list.append(float(row[2]))
     
     return names_list, counts_list
 
@@ -82,7 +82,7 @@ def plot_bar (names, counts, file_name):
     """   
     fig, axis = plt.subplots()
     rectangles = axis.bar(names, counts) 
-    autolabel(rectangles, axis)
+#    autolabel(rectangles, axis)
     
     plt.xticks(
     rotation=45, 

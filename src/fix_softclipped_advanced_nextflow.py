@@ -239,10 +239,16 @@ def fix_soft_clipped(sam, fasta_file):
         elif rev == False and right_end[0] != 4:          
             cleavage_site = int(refEnd)
             fixed_cleavage_site = cleavage_site 
-            
+        
+        # correct cleavage site and fixed cleavage site:
+        # because bam file is 0-index based whilst pysam and bed files are 1-index based.
+        # if you want to save it in bam file, you have to add 1bp in cleavage site and fixed cleavage site.
+        # it applies to both + and - strand.
+        cleavage_site += 1
+        fixed_cleavage_site += 1
         # save the original and fixed cleavage site into OC and FC tag respectively.     
-        read.set_tag("OC", cleavage_site)
-        read.set_tag("FC", fixed_cleavage_site)
+        read.set_tag("XO", cleavage_site)
+        read.set_tag("XF", fixed_cleavage_site)
 
         changed_reads.append(read)
         

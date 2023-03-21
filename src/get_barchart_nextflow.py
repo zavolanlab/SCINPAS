@@ -8,6 +8,11 @@ Created on Mon Jan 10 10:26:42 2022
 import csv
 import matplotlib.pyplot as plt
 import argparse
+import numpy as np
+
+
+
+
 
 """
 Aim: draw bar plot of read counts in each class (for a given sample)
@@ -24,11 +29,11 @@ def read_counts(input_directory):
     -------
     names_list : list
         sorted list of each class name (type) of reads according to our need.
-        we want in this order: 'original', 'deduplicated', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A'
+        we want in this order: 'original', 'deduplicated', 'softclipped', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A'
         
     counts_list : list
         sorted list of the number of reads in each class according to our need.
-        we want in this order: 'original', 'deduplicated', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A'
+        we want in this order: 'original', 'deduplicated', 'softclipped', 'nonPolyA', 'allPolyA', 'terminal+A', 'exonic_A'
     """
     names_list = []
     counts_list = []
@@ -53,11 +58,20 @@ def autolabel(rects, ax):
     -------
     returns nothing but it attaches a text label above each bar displaying its height. (to the figure panel)
     """
+    count = 0
+    variation = 1.05
     for rect in rects:
         height = rect.get_height()
-        ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
-                '%d' % float(height),
+        # instead of fixing to 1.05, fiddle a little bit where text is likely to overlap
+        if count == 2:
+            variation += 1.2
+        elif count > 2:
+            variation = 1.05    
+        # %s and %d are placeholders for a string and a number respectively. 
+        ax.text(rect.get_x() + rect.get_width()/2., variation*height,
+                '%s' % '{:.2E}'.format(float(height)),
                 ha='center', va='bottom')
+        count += 1
         
 def plot_bar (names, counts, file_name):
     """

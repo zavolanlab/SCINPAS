@@ -94,7 +94,7 @@ def sort_lists(names, counts):
         but ordered such that it corresponds to organized_names.
         
     """   
-    organized_names = ['annotated', 'unannotated', 'intergenic', 'intronic', 'exonic']
+    organized_names = ['ATE', 'UTE', 'IG', 'I', 'NTE']
     indices = [find_index(names, elem) for elem in organized_names]
     organized_counts = [counts[elem] for elem in indices]
     return organized_names, organized_counts

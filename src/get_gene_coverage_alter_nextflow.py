@@ -59,7 +59,7 @@ def check_GX_overlap(tag, bed):
     False if GX tag from the read does not exist in the bed file.
     """         
     bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
-    filtered_exons = bed[bed['id'] == tag]
+    filtered_exons = bed[(bed['id'] == tag) & (bed['score'] <= 3)]
     
     if len(filtered_exons) >= 1:
         return True

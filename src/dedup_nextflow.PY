@@ -915,7 +915,7 @@ def run_process():
     
     b_template = args.bam_template
     o_template = args.out_template
-    number = b_template.split('_')[1].split('.bam')[0]
+    number = b_template.split('.')[0].split('_')[-1]
     thres = args.span_threshold
     s_read_template = args.split_read_template
     

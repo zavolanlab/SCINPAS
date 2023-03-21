@@ -25,7 +25,7 @@ process PREPARE_SINGLE_LINKAGE{
 process PREPARE_IN_SLC {
 
 	label "bash"
-	publishDir "${params.folder_template}/result/${specific_sample}", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}", mode: 'copy'
 	
 	input:
 	val specific_sample
@@ -39,7 +39,7 @@ process PREPARE_IN_SLC {
 	path "in_slc_num_polyA"
 	// pass as "val" and then when you pass full data as input use "path". This is to avoid scope issue. 
 	// (you didnt receive full data as an input here but you are trying to use it as a file)
-	tuple val("${params.folder_template}/data/${species}/${specific_sample}.bam"), val("${params.folder_template}/data/${species}/${specific_sample}.bam.bai"), val("${specific_sample}")
+	tuple val("${params.folder_template}/data/${species}/${params.result_folder}/${specific_sample}.bam"), val("${params.folder_template}/data/${species}/${params.result_folder}/${specific_sample}.bam.bai"), val("${specific_sample}")
 
 	script:
 	"""
@@ -50,53 +50,91 @@ process PREPARE_IN_SLC {
 	"""
 }
 
-process TRIM_NEG_CONTROL {
-
+process FIND_EXONS_GENES_BED{
+	
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/common", mode: 'copy'
 
 	input:
-	tuple path(bam), path(bai), val(specific_sample)
 	path python_script
-	
+
 	output:
-	tuple path ("${specific_sample}_fixed.bam"), val("${specific_sample}")
+	path("${params.exons_bed_out}")
+	path("${params.genes_bed_out}")
 
 	script:
 	"""
 	python3 ${python_script}\
-		--bam_input ${bam}\
-		--bam_out ${specific_sample}_fixed.bam
-	"""	
+	--gtf_dir ${params.gtf_fasta_location_template}/${params.sample_type}/${params.gtf}\
+	--genes_bed_out ${params.genes_bed_out}\
+	--exons_bed_out ${params.exons_bed_out}
+	"""
+}
+
+process FIND_TERMINAL_EXONS{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/common", mode: 'copy'
+
+	input:
+	path python_script
+
+	output:
+	path "${params.terminal_exons_out}"
+
+	script:
+	"""
+	python3 ${python_script} --gtf_file ${params.gtf_fasta_location_template}/${params.sample_type}/${params.gtf} --bed_out ${params.terminal_exons_out}
+	"""
+}
+
+process FILTER_FURTHER_TERMINAL_EXONS{
+	
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/common", mode: 'copy'
+
+	input:
+	path terminal_exons
+	path python_script
+
+	output:
+	path("${params.further_filtered_terminal_exons_out}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	--terminal_exons_bed_input ${terminal_exons}\
+	--bed_out ${params.further_filtered_terminal_exons_out}
+	"""
 }
 
 process SPLIT_PHASE1 {
 	
 	echo true
 	label "samtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/trimming_and_deduplication", mode: 'copy'
 	tag "$chrom"
 
 	input:
 	tuple path(bam), path(bai), val(specific_sample), val(chrom)
 
 	output:
-	tuple path("possorted_*.bam"), path("possorted_*.bam.bai"), val("${specific_sample}")
+	tuple path("${specific_sample}_possorted_*.bam"), path("${specific_sample}_possorted_*.bam.bai"), val("${specific_sample}")
 	tuple val("${specific_sample}"), path("bam_folder_${chrom}")
 
 	script:
 	"""
 	# echo ${bam}
 	# echo ${chrom}
-	samtools view -bh ${bam} chr${chrom} -o intermediate_${chrom} 
+	samtools view -bh ${bam} chr${chrom} -o ${specific_sample}_intermediate_${chrom} 
 
-	samtools sort intermediate_${chrom} -o possorted_${chrom}.bam
+	samtools sort ${specific_sample}_intermediate_${chrom} -o ${specific_sample}_possorted_${chrom}.bam
 		
-	samtools index possorted_${chrom}.bam
+	samtools index ${specific_sample}_possorted_${chrom}.bam
 
 	mkdir bam_folder_${chrom}
 	# copy possorted_number.bam, bai to bamfolder_number folder
-	cp possorted_* bam_folder_${chrom}
+	cp ${specific_sample}_possorted_* bam_folder_${chrom}
 	
 	"""         
 }
@@ -104,15 +142,16 @@ process SPLIT_PHASE1 {
 process DEDUP {
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output", mode: 'copy'
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/trimming_and_deduplication", mode: 'copy'
 
 	input:
 	tuple val(specific_sample), path(bam_folder)
 	path python_script
 	
 	output:
-	tuple path ("deduplicated_chr*"), val("${specific_sample}")
-	tuple path ("splitted_chr*"), val("${specific_sample}")
+	tuple path ("${specific_sample}_deduplicated_chr*"), val("${specific_sample}")
+	tuple path ("${specific_sample}_splitted_chr*"), val("${specific_sample}")
 
 	script:
 	"""
@@ -120,10 +159,10 @@ process DEDUP {
 	cp ${bam_folder}/* .
 	# * is for placeholder not "all"
 	python3 ${python_script} \
-		--bam_template possorted_*.bam \
-		--out_template ${params.dedup_out_name_prefix}\
+		--bam_template ${specific_sample}_possorted_*.bam \
+		--out_template ${specific_sample}_${params.dedup_out_name_prefix}\
 		--span_threshold ${params.span_threshold}\
-		--split_read_template ${params.split_out_name_prefix}	
+		--split_read_template ${specific_sample}_${params.split_out_name_prefix}	
 	"""
 }
 
@@ -131,7 +170,7 @@ process SORT_PHASE1{
 	
 	echo true
 	label "samtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output/", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/trimming_and_deduplication/", mode: 'copy'
 	
 	input:
 	tuple path(bams), val(specific_sample)
@@ -163,6 +202,19 @@ process CONVERT_TUPLE{
 	"""
 }
 
+process CHANGE_TUPLE_ORDER{
+	label "bash"
+	input:
+	tuple path(bams), path(bais), val(specific_sample)
+	
+	output:
+	tuple path("${bams}"), val("${specific_sample}"), path("${bais}")
+
+	script:
+	"""
+	"""
+}
+
 process SPLIT_TUPLE{
 	label "bash"
 	input:
@@ -181,30 +233,94 @@ process SPLIT_TUPLE{
 process MERGE{
 
 	label "samtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/trimming_and_deduplication", mode: 'copy'
 	
 	// input channel looks like: [([bam1, bam2...... bam6.....bamY], sample1), ([bam1, bam2...... bam6.....bamY], sample2)]
 	// this is to merge once and only once rather than merging several times
 	input:
-	tuple path(bams), val(specific_sample) 
-	tuple path(bais), val(specific_sample)
+	tuple path(bams), path(bais), val(specific_sample)
 
 	output:
-	tuple path ("dedup_full_sorted.bam"), path ("dedup_full_sorted.bam.bai"), val("${specific_sample}")
+	tuple path ("${specific_sample}_dedup_full_sorted.bam"), path ("${specific_sample}_dedup_full_sorted.bam.bai"), val("${specific_sample}")
 		
 	script:
 	"""
-	samtools merge -f -o dedup_full.bam deduplicated_chr*_output_sorted.bam
-	samtools sort dedup_full.bam -o dedup_full_sorted.bam
-	samtools index dedup_full_sorted.bam
+	samtools merge -f -o ${specific_sample}_dedup_full.bam ${specific_sample}_deduplicated_chr*_output_sorted.bam
+	samtools sort ${specific_sample}_dedup_full.bam -o ${specific_sample}_dedup_full_sorted.bam
+	samtools index ${specific_sample}_dedup_full_sorted.bam
+	"""
+}
+
+process MERGE_CONTROL{
+
+	label "samtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/get_polyA", mode: 'copy'
+	
+	// input channel looks like: [([bam1, bam2...... bam6.....bamY], sample1), ([bam1, bam2...... bam6.....bamY], sample2)]
+	// this is to merge once and only once rather than merging several times
+	input:
+	tuple path(bams), path(bais), val(specific_sample)
+
+	output:
+	tuple path ("${specific_sample}_dedup_fixed_full_sorted.bam"), path ("${specific_sample}_dedup_fixed_full_sorted.bam.bai"), val("${specific_sample}")
+		
+	script:
+	"""
+	samtools merge -f -o ${specific_sample}_dedup_fixed_full.bam ${specific_sample}_DedupNegative_ctrl_reads_sorted_*.bam
+	samtools sort ${specific_sample}_dedup_fixed_full.bam -o ${specific_sample}_dedup_fixed_full_sorted.bam
+	samtools index ${specific_sample}_dedup_fixed_full_sorted.bam
+	"""
+}
+
+process TRIM_NEG_CONTROL {
+
+	label "custom_python"
+	label "middle_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/trimming_and_deduplication", mode: 'copy'
+
+	input:
+	tuple path(bam), path(bai), val(specific_sample)
+	path python_script
+	
+	output:
+	tuple path ("${specific_sample}_fixed.bam"), val("${specific_sample}")
+
+	script:
+	"""
+	python3 ${python_script}\
+		--bam_input ${bam}\
+		--bam_out ${specific_sample}_fixed.bam
+	"""	
+}
+
+process FIX_SOFTCLIPPED_REGION{
+	
+	label "custom_python"
+	label "super_heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/trimming_and_deduplication", mode: 'copy'
+
+	input:
+	tuple path(bam), path(bai), val(specific_sample)
+	path python_script
+
+	output:
+	tuple path("${params.bam_after_fixation}"), val("${specific_sample}")
+	
+	script:
+	"""
+	python3 ${python_script}\
+	--bam_file ${bam}\
+	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
+	--bam_out ${params.bam_after_fixation}
+
 	"""
 }
 
 process GET_SPAN_RAW{
 
 	label "custom_python"
-	label "heavy_computation"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output/", mode: 'copy'
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/span_distribution", mode: 'copy'
 
 	input:
 	tuple path(raw_bams), path(raw_bais), val(specific_sample)
@@ -213,19 +329,19 @@ process GET_SPAN_RAW{
 	path python_script
 
 	output:
-	tuple path("${params.raw_span}_*.csv"), val("${specific_sample}")
+	tuple path("${specific_sample}_${params.raw_span}_*.csv"), val("${specific_sample}")
 	
 	script:
 	"""
 	if [[ ${sample_or_control} == "sample" ]]
 	then
 		raw_input=\$(basename ${raw_bams})
-		raw_prefix=\$(echo \$raw_input | cut -d '_' -f 2)
+		raw_prefix=\$(echo \$raw_input | cut -d '_' -f 5)
 		raw_number=\$(echo \$raw_prefix | cut -d '.' -f 1)
 
 		python3 ${python_script}\
 		--input ${raw_bams}\
-		--output ${params.raw_span}_\${raw_number}.csv\
+		--output ${specific_sample}_${params.raw_span}_\${raw_number}.csv\
 		--action_type ${raw}
 
 	elif [[ ${sample_or_control} == "control" ]]
@@ -236,7 +352,7 @@ process GET_SPAN_RAW{
 
 		python3 ${python_script}\
 		--input ${raw_bams}\
-		--output ${params.raw_span}_\${raw_number}.csv\
+		--output ${specific_sample}_${params.raw_span}_\${raw_number}.csv\
 		--action_type ${raw}
 	fi	
 	"""
@@ -245,8 +361,8 @@ process GET_SPAN_RAW{
 process GET_SPAN_DEDUP{
 
 	label "custom_python"
-	label "heavy_computation"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output/dedup_span", mode: 'copy'
+	label "middle_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/span_distribution", mode: 'copy'
 
 	input:
 	tuple path(dedup_bams), path(dedup_bais), val(specific_sample)
@@ -255,19 +371,19 @@ process GET_SPAN_DEDUP{
 	path python_script
 
 	output:
-	tuple path("${params.dedup_span}_*.csv"), val("${specific_sample}")
+	tuple path("${specific_sample}_${params.dedup_span}_*.csv"), val("${specific_sample}")
 	
 	script:
 	"""
 	if [[ ${sample_or_control} == "sample" ]]
 	then
 		dedup_input=\$(basename ${dedup_bams})
-		dedup_prefix=\$(echo \$dedup_input | cut -d '_' -f 2)
+		dedup_prefix=\$(echo \$dedup_input | cut -d '_' -f 5)
 		dedup_number=\$(echo \$dedup_prefix | cut -d 'r' -f 2)
 
 		python3 ${python_script}\
 		--input ${dedup_bams}\
-		--output ${params.dedup_span}_\${dedup_number}.csv\
+		--output ${specific_sample}_${params.dedup_span}_\${dedup_number}.csv\
 		--action_type ${dedup}
 
 	elif [[ ${sample_or_control} == "control" ]]
@@ -278,7 +394,7 @@ process GET_SPAN_DEDUP{
 
 		python3 ${python_script}\
 		--input ${dedup_bams}\
-		--output ${params.dedup_span}_\${dedup_number}.csv\
+		--output ${specific_sample}_${params.dedup_span}_\${dedup_number}.csv\
 		--action_type ${dedup}	
 
 	fi		
@@ -288,8 +404,8 @@ process GET_SPAN_DEDUP{
 process GET_SPAN_SPLIT{
 
 	label "custom_python"
-	label "heavy_computation"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output/split_span", mode: 'copy'
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/span_distribution", mode: 'copy'
 
 	input:
 	tuple path(split_bams), path(split_bais), val(specific_sample)
@@ -297,17 +413,17 @@ process GET_SPAN_SPLIT{
 	path python_script
 
 	output:
-	tuple path("${params.split_span}_*.csv"), val("${specific_sample}")
+	tuple path("${specific_sample}_${params.split_span}_*.csv"), val("${specific_sample}")
 
 	script:
 	"""
 	split_input=\$(basename ${split_bams})
-	split_prefix=\$(echo \$split_input | cut -d '_' -f 2)
+	split_prefix=\$(echo \$split_input | cut -d '_' -f 5)
 	split_number=\$(echo \$split_prefix | cut -d 'r' -f 2)
 
 	python3 ${python_script}\
-	--input splitted_chr\${split_number}_output_sorted.bam\
-	--output ${params.split_span}_\${split_number}.csv\
+	--input ${specific_sample}_splitted_chr\${split_number}_output_sorted.bam\
+	--output ${specific_sample}_${params.split_span}_\${split_number}.csv\
 	--action_type ${split}
 	"""
 }
@@ -315,7 +431,8 @@ process GET_SPAN_SPLIT{
 process CONCAT_SPAN{
 
 	label "bash"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output", mode: 'copy'
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/span_distribution", mode: 'copy'
 
 	input:
 	// channel looks like: [([csv1, csv2...... csv6.....csvY], sample1), ([csv1, csv2...... csv6.....csvY], sample2)]
@@ -327,7 +444,7 @@ process CONCAT_SPAN{
 
 	script:
 	"""
-	cat ${file_name}_*.csv > ${specific_sample}_combined_${file_name}.csv
+	cat ${specific_sample}_${file_name}_*.csv > ${specific_sample}_combined_${file_name}.csv
 	# cat ${params.dedup_span}_*.csv > combined_dedup_span.csv
 	"""
 }
@@ -335,7 +452,8 @@ process CONCAT_SPAN{
 process GET_SPAN_HIST{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase1_output", mode: 'copy'
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/span_distribution", mode: 'copy'
 
 	input:
 	tuple path(combined_spans), val(specific_sample)
@@ -353,48 +471,11 @@ process GET_SPAN_HIST{
 	"""
 }
 
-process FIND_TERMINAL_EXONS{
-
-	label "custom_python"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
-
-	input:
-	path python_script
-
-	output:
-	path "${params.terminal_exons_out}"
-
-	script:
-	"""
-	python3 ${python_script} --gtf_file ${params.gtf_fasta_location_template}/${params.sample_type}/${params.gtf} --bed_out ${params.terminal_exons_out}
-	"""
-}
-
-process FIND_EXONS_GENES_BED{
-	
-	label "custom_python"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
-
-	input:
-	path python_script
-
-	output:
-	path("${params.exons_bed_out}")
-	path("${params.genes_bed_out}")
-
-	script:
-	"""
-	python3 ${python_script}\
-	--gtf_dir ${params.gtf_fasta_location_template}/${params.sample_type}/${params.gtf}\
-	--genes_bed_out ${params.genes_bed_out}\
-	--exons_bed_out ${params.exons_bed_out}
-	"""
-}
-
 process GET_POLYA{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
+	label "super_heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/get_polyA", mode: 'copy'
 	
 	input:
 	// for each specific sample, run python script
@@ -404,14 +485,14 @@ process GET_POLYA{
 	path python_script
 
 	output:
-	tuple path("${polyA_out}"), val("${specific_sample}")
-	tuple path("${nonpolyA_out}"), val("${specific_sample}")
+	tuple path("${polyA_out}.bam"), val("${specific_sample}")
+	tuple path("${nonpolyA_out}.bam"), val("${specific_sample}")
 	
 	script:
 	"""
 	python3 ${python_script} --bam_input ${dedup_full_bam}\
-	--o_polyA ${polyA_out}\
-	--o_nonpolyA ${nonpolyA_out}\
+	--o_polyA ${polyA_out}.bam\
+	--o_nonpolyA ${nonpolyA_out}.bam\
 	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
 	--percentage_threshold ${params.polyA_percentage_threshold}\
 	--length_threshold ${params.length_threshold}\
@@ -424,29 +505,7 @@ process SORT_PHASE2{
 
 	echo true
 	label "samtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
-	
-	input:
-	tuple path(bam), val(specific_sample)
-
-	output:
-	tuple path("*_sorted.bam"), path("*_sorted.bam.bai"), val("${specific_sample}")
-
-	script:
-	"""	
-	input=\$(basename ${bam})
-	prefix=\$(echo \$input | cut -d '.' -f 1)
-
-	samtools sort ${bam} -o \${prefix}_sorted.bam
-	samtools index \${prefix}_sorted.bam
-	"""
-}
-
-process SORT_PHASE2_ALTER{
-
-	echo true
-	label "samtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/get_polyA", mode: 'copy'
 	
 	input:
 	tuple path(bam), val(specific_sample)
@@ -464,75 +523,230 @@ process SORT_PHASE2_ALTER{
 	"""
 }
 
-process INTERSECT{
+process GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED{
 
-	label "bedtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
-
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/bed_clustering", mode: 'copy'
+	
 	input:
-	// here it is ok to have bed file and bam, bai separate because the length are the same (i.e. number of full_bams == number of samples). 
-	// but if two channels have different lengths, then you need to concatenate two channels into one channel
-	// if channel of length = 1, it does not matter if two channels have different lengths or not (bed file is length of 1 so it is ok).
-	tuple path(bam), path(bai), val(specific_sample)
-	path(bed)
-	val(out_name)
+	tuple path(bams), path(bais), val(specific_sample)
+	val(polyA_unique_cs_bed)
+	path python_script
 
 	output:
-	tuple path("${out_name}.bam"), val("${specific_sample}")
+	tuple path("${specific_sample}_${polyA_unique_cs_bed}"), val("${specific_sample}")
 
 	script:
 	"""
-	bedtools intersect -s -nonamecheck -abam ${bam} -b ${bed} > ${out_name}.bam
+	python3 ${python_script}\
+	--bam ${bams}\
+	--bed_out ${specific_sample}_${polyA_unique_cs_bed}\
+	--use_fc ${params.use_fc}
 	"""
 }
 
-process NO_INTERSECT{
-	
-	label "bedtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
+process PERFORM_CLUSTERING_TUPLE{
 
+	label "custom_python"
+	label "heavy_computation"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/bed_clustering", mode: 'copy'
+	
 	input:
-	// here it is ok to have bed file and bams_bais separate because the length are the same (i.e. number of full_bams == number of samples). 
-	// but if two channels have different lengths, then you need to concatenate two channels into one channel
-	// if channel of length = 1, it does not matter if two channels have different lengths or not (bed file is length of 1 so it is ok).
-	tuple path(bam), path(bai), val(specific_sample)
-	path(bed)
-	val(out_name)
+	tuple path(cleavage_site_bed), val(specific_sample)
+	val(clustered_bed)
+	path python_script
 
 	output:
-	tuple path("${out_name}.bam"), val("${specific_sample}")
+	tuple path("${specific_sample}_${clustered_bed}"), val("${specific_sample}")
 
 	script:
 	"""
-	bedtools intersect -s -v -nonamecheck -abam ${bam} -b ${bed} > ${out_name}.bam
+	python3 ${python_script}\
+	in_bed ${cleavage_site_bed}\
+	--out ${specific_sample}_${clustered_bed}\
+	--du ${params.cluter_up}\
+	--dd ${params.cluster_down}\
+	--c ${params.num_cores}
 	"""
 }
 
-// sort on single full data for all samples (after intersect)
-process SORT_AFTER_INTERSECT{
+process BED_INTERSECT_TUPLE{
+
+	label "bedtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/bed_classification", mode: 'copy'
+
+	input:
+	// if channel of length = 1, it does not matter if two channels have different lengths or not (bed file is length of 1 so it is ok).
+	tuple path(clustered_bed_file), val(specific_sample)
+	// either terminal_exons, exons or genes.bed
+	path(bed)
+	val(intersect_out_name)
 	
+	output:
+	tuple path("*_${intersect_out_name}.bed"), val("${specific_sample}")
+	
+	script:
+	"""
+	input=\$(basename ${clustered_bed_file})
+	prefix=\$(echo \$input | cut -d '_' -f 1-3)
+	bedtools intersect -s -u -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > \${prefix}_${intersect_out_name}.bed
+	"""
+}
+
+process BED_NO_INTERSECT_TUPLE{
+
+	label "bedtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/bed_classification", mode: 'copy'
+
+	input:
+	// if channel of length = 1, it does not matter if two channels have different lengths or not (bed file is length of 1 so it is ok).
+	tuple path(clustered_bed_file), val(specific_sample)
+	// either terminal_exons, exons or genes.bed
+	path(bed)
+	val(no_intersect_out_name)
+	
+	output:
+	tuple path("*_${no_intersect_out_name}.bed"), val("${specific_sample}")
+
+	script:
+	"""
+	input=\$(basename ${clustered_bed_file})
+	prefix=\$(echo \$input | cut -d '_' -f 1-3)
+	bedtools intersect -s -v -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > \${prefix}_${no_intersect_out_name}.bed
+	"""
+}
+
+process CLASSIFY_BAM{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/split_bam_classification", mode: 'copy'
+	
+	input:
+	// all_files contain polyA.bam, polyA.bai, TE.bed, E.bed, Intronic.bed and Intergenic.bed in a mixed order. It does not matter. we can access them correctly by their names
+	tuple val(specific_sample), path(bam), path(bai), path(input_bed)
+	val(bam_out)
+	val(remaining_bam)
+	val(class_reads)
+	path python_script
+
+	output:
+	tuple path("${specific_sample}_${bam_out}_*.bam"), val("${specific_sample}")
+	tuple path("${specific_sample}_${remaining_bam}_*.bam"), val("${specific_sample}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	--bam ${bam}\
+	--input_bed ${input_bed}\
+	--use_fc ${params.use_fc}\
+	--out_bam ${specific_sample}_${bam_out}\
+	--remaining_bam ${specific_sample}_${remaining_bam}\
+	--class_reads ${class_reads}
+	"""
+}
+
+process MERGE_CLASSIFIED{
+
 	label "samtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
-
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/bam_classification", mode: 'copy'
+	
+	// input channel looks like: [[bam1, bam2...... bam6.....bamY], sample1, [bai1, bai2...... bai6.....baiY]]
+	// this is to merge once and only once rather than merging several times
 	input:
-	tuple path(bam), val(specific_sample)
-	val(out_name)
+	tuple path(bams), val(specific_sample), path(bais)
+	val(output_template)
 
 	output:
-	tuple path("${out_name}_sorted.bam"), path("${out_name}_sorted.bam.bai"), val("${specific_sample}")
-
+	tuple path ("${specific_sample}_${output_template}_full_sorted.bam"), path ("${specific_sample}_${output_template}_full_sorted.bam.bai"), val("${specific_sample}")
+		
 	script:
 	"""
-	samtools sort ${bam} -o ${out_name}_sorted.bam
-	samtools index ${out_name}_sorted.bam
+	samtools merge -f -o ${specific_sample}_${output_template}_full.bam ${specific_sample}_${output_template}_*.bam
+	samtools sort ${specific_sample}_${output_template}_full.bam -o ${specific_sample}_${output_template}_full_sorted.bam
+	samtools index ${specific_sample}_${output_template}_full_sorted.bam
 	"""
 }
 
-process SPLIT_PHASE2 {
+process ISOLATE_PA_T{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/bed_classification", mode: 'copy'
+	
+	input:
+	tuple path(bed), val(specific_sample)
+	path(terminal_exons)
+	path python_script
+
+	output:
+	tuple path("${specific_sample}_${params.below_template}.bed"), val("${specific_sample}")
+	tuple path("${specific_sample}_${params.above_template}.bed"), val("${specific_sample}")
+	
+	script:
+	"""
+	python3 ${python_script}\
+	--bed_input ${bed}\
+	--terminal_exons_gtf ${terminal_exons}\
+	--annotated_out ${specific_sample}_${params.below_template}.bed\
+	--unannotated_out ${specific_sample}_${params.above_template}.bed\
+	--distance_threshold ${params.distance_threshold}
+	"""
+}
+
+process CLASSIFY_BELOW_ABOVE{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/split_bam_classification", mode: 'copy'
+	
+	input:
+	tuple val(specific_sample), path(bam), path(bai), path(input_bed)
+	val(bam_out)
+	val(remaining_bam)
+	val(class_reads)
+	path python_script
+
+	output:
+	tuple path("${specific_sample}_${bam_out}_*.bam"), val("${specific_sample}")
+	tuple path("${specific_sample}_${remaining_bam}_*.bam"), val("${specific_sample}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	--bam ${bam}\
+	--input_bed ${input_bed}\
+	--use_fc ${params.use_fc}\
+	--out_bam ${specific_sample}_${bam_out}\
+	--remaining_bam ${specific_sample}_${remaining_bam}\
+	--class_reads ${class_reads}
+	"""
+}
+
+process SORT_CLASSIFIED{
 
 	echo true
 	label "samtools"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/split_bam_classification", mode: 'copy'
+	
+	input:
+	tuple path(bam), val(specific_sample)
+
+	output:
+	tuple path("*_sorted.bam"), val("${specific_sample}"), path("*_sorted.bam.bai")
+
+	script:
+	"""	
+	input=\$(basename ${bam})
+	prefix=\$(echo \$input | cut -d '.' -f 1)
+
+	samtools sort ${bam} -o \${prefix}_sorted.bam
+	samtools index \${prefix}_sorted.bam
+	"""
+}
+
+process SPLIT_PHASE2{
+
+	echo true
+	label "samtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/split_bam_classification", mode: 'copy'
 	
 	input:
 	tuple path(bam), path(bai), val(specific_sample), val(chrom)
@@ -548,55 +762,77 @@ process SPLIT_PHASE2 {
 	"""         
 }
 
-process GET_PRO_INTRONIC_INTERGENIC{
-	
-	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
+process GET_NON_SOFTCLIP{
 
+	label "custom_python"
+	label "super_heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/get_A_freq_in_nonsoftclipped_reads", mode: 'copy'
+	
 	input:
-	tuple path(polyA_bam), path(polyA_bai), val(specific_sample)
+	// for each specific sample, run python script
+	tuple path(dedup_full_bam), path(dedup_full_bai), val(specific_sample)
 	path python_script
 
 	output:
-	tuple path("${params.out_pro_intronic_intergenic}"), val("${specific_sample}") 
+	tuple path("${specific_sample}_${params.no_softclipped_reads}"), val("${specific_sample}")
 
+	
 	script:
 	"""
-	python3 ${python_script} --bam_input ${polyA_bam}\
-	--bam_out ${params.out_pro_intronic_intergenic}\
+	python3 ${python_script}\
+	--bam_input ${dedup_full_bam}\
+	--o_file ${specific_sample}_${params.no_softclipped_reads}
+	"""
+
+}
+
+process SORT_PHASE3{
+
+	echo true
+	label "samtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/get_A_freq_in_nonsoftclipped_reads", mode: 'copy'
+	
+	input:
+	tuple path(bam), val(specific_sample)
+
+	output:
+	tuple path("*_sorted.bam"), path("*_sorted.bam.bai"), val("${specific_sample}")
+
+	script:
+	"""	
+	input=\$(basename ${bam})
+	prefix=\$(echo \$input | cut -d '.' -f 1)
+
+	samtools sort ${bam} -o ${specific_sample}_\${prefix}_sorted.bam
+	samtools index ${specific_sample}_\${prefix}_sorted.bam
 	"""
 }
 
-process ISOLATE_POLYA_TERMINAL{
+process GET_A_FREQ_IN_NONSOFTCLIP{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
-
-	input:
-	// if channel of length = 1, it does not matter if two channels have different lengths or not (bed file is length of 1). so did not fuse them
-	tuple path(bams), path(bais), val(specific_sample)
-	path(terminal_exons)
-	path python_script
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/get_A_freq_in_nonsoftclipped_reads", mode: 'copy'
 	
+	input:
+	// for each specific sample, run python script
+	tuple path(bam), path(bai), val(specific_sample)
+	path python_script
+
 	output:
-	tuple path ("isolated_reads_above_chr*"), val("${specific_sample}")
-	tuple path("isolated_reads_below_chr*"), val("${specific_sample}")
+	path "${specific_sample}_${params.avg_a_freq_csv}"
 
 	script:
 	"""
-	python3 ${python_script} --bam_input ${bams}\
-	--bed_dir ${terminal_exons}\
-	--unannotated_template ${params.unannotated_in_template}\
-	--annotated_template ${params.annotated_in_template}\
-	--distance_threshold ${params.distance_threshold}\
-	--use_fc ${params.use_fc}
+	python3 ${python_script}\
+	--bam_input ${bam}\
+	--o_file ${specific_sample}_${params.avg_a_freq_csv}
 	"""
 }
 
 process GET_COUNTS{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase3_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/num_reads_per_class", mode: 'copy'
 
 	input:
 	tuple path(full_bams), path(full_bais), val(specific_sample)
@@ -619,7 +855,7 @@ process GET_COUNTS{
 
 process CONCAT_COUNTS{
 	label "bash"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/common", mode: 'copy'
 	
 	input:
 	path (csvs)
@@ -636,31 +872,85 @@ process CONCAT_COUNTS{
 
 process MERGE_ALL_COUNTS{
 	label "bash"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/separate_merged_counts", mode: 'copy'
 	
 	input:
 	path(raw_concat_csv)
 	path(dedup_concat_csv)
+	path(dedup_softclipped_concat_csv)
 	path(nonpolyA_concat_csv)
 	path(polyA_concat_csv)
 	path(polyA_T_concat_csv)
+	path(annotated_concat_csv)
+	path(unannotated_concat_csv)
 	path(intronic_concat_csv)
 	path(intergenic_concat_csv)
 	path(exonic_concat_csv)
-
+	val(out_name)
+	
 	output:
-	path("total_merged.csv")
+	path("${out_name}.csv")
 
 	script:
 	"""
-	cat *.csv > total_merged.csv
+	cat *.csv > ${out_name}.csv
 	"""
 }
+
+// process MERGE_ALL_COUNTS{
+// 	label "bash"
+// 	publishDir "${params.folder_template}/result/${params.result_folder}/separate_merged_counts", mode: 'copy'
+	
+// 	input:
+// 	path(raw_concat_csv)
+// 	path(dedup_concat_csv)
+// 	path(dedup_softclipped_concat_csv)
+// 	path(nonpolyA_concat_csv)
+// 	path(polyA_concat_csv)
+// 	path(polyA_T_concat_csv)
+// 	path(intronic_concat_csv)
+// 	path(intergenic_concat_csv)
+// 	path(exonic_concat_csv)
+// 	val(out_name)
+	
+// 	output:
+// 	path("${out_name}.csv")
+
+// 	script:
+// 	"""
+// 	cat *.csv > ${out_name}.csv
+// 	"""
+// }
+
+// process MERGE_ALL_COUNTS{
+// 	label "bash"
+// 	publishDir "${params.folder_template}/result/${params.result_folder}/separate_merged_counts", mode: 'copy'
+	
+// 	input:
+// 	path(raw_concat_csv)
+// 	path(dedup_concat_csv)
+// 	path(dedup_softclipped_concat_csv)
+// 	path(nonpolyA_concat_csv)
+// 	path(polyA_concat_csv)
+// 	path(polyA_T_concat_csv)
+// 	path(intronic_concat_csv)
+// 	path(intergenic_concat_csv)
+// 	path(exonic_concat_csv)
+// 	val(out_name)
+	
+// 	output:
+// 	path("${out_name}.csv")
+
+// 	script:
+// 	"""
+// 	cat *.csv > ${out_name}.csv
+// 	"""
+// }
 
 process SPLIT_PER_SAMPLE{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/separate_merged_counts", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/separate_merged_counts", mode: 'copy'
 
 	input:
 	path(totalCounts_csv)
@@ -707,10 +997,10 @@ process MAKE_COUNT_SAMPLE{
 process GET_BAR_CHART{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase3_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/num_reads_per_class", mode: 'copy'
 	
 	input:
-	tuple path(csvs), val(specific_sample)
+	tuple path(csvs), val(specific_sample), path(control_csv)
 	path python_script
 	
 	output:
@@ -720,84 +1010,52 @@ process GET_BAR_CHART{
 	"""
 	python3 ${python_script}\
 	--input_dir ${csvs}\
+	--control_input_dir ${control_csv}\
 	--out_file ${specific_sample}_${params.barchart_output}
 	"""
 }
 
-process GET_DISTANCE_ALTER_SAMPLE{
+process GET_DISTANCE_ALTER{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase4_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/distance", mode: 'copy'
 
 	input:
-	tuple path(polyA_t_full_bam), path(polyA_t_full_bai), val(specific_sample)
+	tuple path(polyA_t_full_bed), val(specific_sample)
 	path terminal_exons
-	val sample_or_control
 	path python_script
 
 	output:
-	tuple path("distances.csv"), val("${specific_sample}")
-	path "outlier*.csv"
+	tuple path("${specific_sample}_${params.distance_output}"), val("${specific_sample}")
 	
 	script:
 	"""
 	python3 ${python_script}\
-	--bam_input ${polyA_t_full_bam}\
-	--bed_input ${terminal_exons}\
-	--distance_out ${params.distance_output}\
-	--use_fc ${params.use_fc}\
-	--sample_or_control ${sample_or_control}
+	--bed_input ${polyA_t_full_bed}\
+	--gtf_input ${terminal_exons}\
+	--distance_out ${specific_sample}_${params.distance_output}
 	"""
 }
 
-process GET_DISTANCE_ALTER_CONTROL{
-
-	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase4_output", mode: 'copy'
-
-	input:
-	tuple path(polyA_t_full_bam), path(polyA_t_full_bai), val(specific_sample)
-	path terminal_exons
-	val sample_or_control
-	path python_script
-
-	output:
-	tuple path("distances*.csv"), val("${specific_sample}")
-	path "outlier*.csv"
-	
-	script:
-	"""
-	python3 ${python_script}\
-	--bam_input ${polyA_t_full_bam}\
-	--bed_input ${terminal_exons}\
-	--distance_out ${params.distance_output}\
-	--use_fc ${params.use_fc}\
-	--sample_or_control ${sample_or_control}
-	"""
-}
-
-process COMBINE_CONTROL_DISTANCES{
+process UNCOUPLE_CSV_WITH_SAMPLE{
 
 	label "bash"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase4_output", mode: 'copy'
 
 	input:
 	tuple path(csvs), val(specific_sample)
-	val out_name
 
 	output:
-	path("${out_name}")
+	path("${csvs}")
 
 	script:
 	"""
-	cat *.csv > ${out_name}
 	"""
 }
 
 process GET_D_HISTOGRAM_ALTER{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase4_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/distance", mode: 'copy'
 
 	input:
 	tuple path(distance_csv), val(specific_sample), path(negative_control_distance_csv)
@@ -811,24 +1069,19 @@ process GET_D_HISTOGRAM_ALTER{
 	python3 ${python_script}\
 	--csv_input ${distance_csv}\
 	--cntrl_csv ${negative_control_distance_csv}\
-	--file_name ${params.distance_histogram_file_name}\
-	--use_fc ${params.use_fc}
+	--file_name ${params.distance_histogram_file_name}
 	"""
 }
 
 process PLOT_ATGC{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase5_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/ATGC_plot", mode: 'copy'
 	// pass all bam files at once (not one by one)
 	// and then within python script it uses bam file one by one.
 	input:
-	tuple path(bams), path(bais), val(specific_sample)
-	val bam_template
+	tuple path(beds), val(specific_sample)
 	val output_name
-	val annotated
-	path single_linkage
-	val species
 	path python_script
 
 	output:
@@ -837,86 +1090,54 @@ process PLOT_ATGC{
 	script:
 	"""
 	python3 ${python_script}\
-	--bam_template ${specific_sample}_${bam_template}\
+	--bed ${beds}\
 	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
-	--slc_distance ${params.slc_distance_parameter}\
 	--out_name ${specific_sample}_${output_name}\
-	--annotated ${annotated}\
-	--in_slc ${params.folder_template}/result/${specific_sample}/in_slc\
-	--use_fc ${params.use_fc}\
-	--species ${species}
-	"""
-}
-
-process FIX_SOFTCLIPPED_REGION{
-	
-	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase2_output", mode: 'copy'
-
-	input:
-	tuple path(bam), path(bai), val(specific_sample)
-	path python_script
-
-	output:
-	tuple path("${params.bam_after_fixation}"), val("${specific_sample}")
-	
-	script:
-	"""
-	python3 ${python_script}\
-	--bam_file ${bam}\
-	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
-	--bam_out ${params.bam_after_fixation}
-
+	--window_size ${params.window_size}
 	"""
 }
 
 process GET_MOTIF_FREQ_PLOT{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase6_output", mode: 'copy'
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/motif_freq_plot", mode: 'copy'
 
 	input:
-	tuple path(bams), path(bais), val(specific_sample)
-	val bam_template
+	tuple path(bed), val(specific_sample)
 	val output_name
 	val annotated
 	path peaks_csv
-	path single_linkage
-	val species
 	path python_script
 
 	output:
-	tuple path ("${specific_sample}_${output_name}*.png"), val("${specific_sample}")
-	tuple path ("${specific_sample}_${output_name}_overlaid.png"), val("${specific_sample}")
+	path ("${specific_sample}_${output_name}*.png")
+	path ("${specific_sample}_${output_name}_overlaid.png")
 	path ("${specific_sample}_${output_name}_ordered_motives.csv")
 	path ("${specific_sample}_${output_name}_scores.csv")
 
 	script:
 	"""
 	python3 ${python_script}\
-	--bam_template ${specific_sample}_${bam_template}\
+	--bed ${bed}\
 	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
-	--slc_distance ${params.slc_distance_parameter}\
 	--out_name ${specific_sample}_${output_name}\
 	--annotated ${annotated}\
-	--motif_in_slc ${params.folder_template}/result/${specific_sample}/in_slc_motif\
 	--window ${params.motif_search_window}\
 	--motif_info_dir ${params.motif_info_dir}\
 	--downstream ${params.down_limit}\
 	--peaks ${peaks_csv}\
-	--species ${species}
 	"""
 }
 
 process GET_MOTIF_FREQ_GTF_PLOT{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/gtf_motif_freq_plots", mode: 'copy'
 
 	input:
 	path terminal_exons
 	val output_name
-	path single_linkage
 	path python_script
 
 	output:
@@ -930,9 +1151,7 @@ process GET_MOTIF_FREQ_GTF_PLOT{
 	python3 ${python_script}\
 	--terminal_exons ${terminal_exons}\
 	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
-	--slc_distance ${params.slc_distance_parameter}\
 	--out_name ${output_name}\
-	--motif_in_slc ${params.folder_template}/result/common\
 	--window ${params.motif_search_window}\
 	--motif_info_dir ${params.motif_info_dir}\
 	--downstream ${params.down_limit}
@@ -941,7 +1160,7 @@ process GET_MOTIF_FREQ_GTF_PLOT{
 
 process CONCAT_MOTIF_ORDERS{
 	label "bash"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/motif_orders", mode: 'copy'
 	
 	input:
 	path (motif_orders_csvs)
@@ -961,7 +1180,7 @@ process CONCAT_MOTIF_ORDERS{
 
 process MERGE_ALL_MOTIF_CSVS{
 	label "bash"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/motif_orders", mode: 'copy'
 	
 	input:
 	path(annotated_concat_csv)
@@ -983,7 +1202,7 @@ process MERGE_ALL_MOTIF_CSVS{
 process SPLIT_MOTIF_ORDER_PER_SAMPLE{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/separate_merged_motif_orders", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/separate_merged_motif_orders", mode: 'copy'
 
 	input:
 	path(total_motif_orders_csv)
@@ -1016,7 +1235,7 @@ process MOTIF_ORDERS_ONE_BY_ONE{
 process COMBINE_MOTIF_ORDERS{
 
 	label "bash"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase6_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/motif_freq_plot", mode: 'copy'
 
 	input:
 	tuple path(csvs), val(specific_sample)
@@ -1036,15 +1255,12 @@ process COMPUTE_SCORES_FOR_MOTIF_ALTER{
 
 	label "custom_python"
 	label "heavy_computation"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase6_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/motif_freq_plot", mode: 'copy'
 
 	input:
-	tuple path(bams), path(bais), val(specific_sample)
-	val bam_template
+	tuple path(beds), val(specific_sample)
 	val output_name
 	path peaks_csv
-	path single_linkage
-	val species
 	path python_script
 
 	output:
@@ -1055,23 +1271,20 @@ process COMPUTE_SCORES_FOR_MOTIF_ALTER{
 	script:
 	"""
 	python3 ${python_script}\
-	--bam_template ${specific_sample}_${bam_template}\
+	--bed ${beds}\
 	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
-	--slc_distance ${params.slc_distance_parameter}\
 	--out_name ${specific_sample}_${output_name}\
-	--motif_in_slc ${params.folder_template}/result/${specific_sample}/in_slc_motif\
 	--window ${params.motif_search_window}\
 	--motif_info_dir ${params.motif_info_dir}\
 	--downstream ${params.down_limit}\
 	--peaks ${peaks_csv}\
-	--species ${species}
 	"""
 }
 
 process COMBINE_CSVS{
 
 	label "bash"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/common", mode: 'copy'
 
 	input:
 	path csvs
@@ -1089,7 +1302,7 @@ process COMBINE_CSVS{
 process GET_BAR_CHART_SCORE_MOTIF_POLYA{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/polyA_motif_score", mode: 'copy'
 	
 	input:
 	path(csvs)
@@ -1109,7 +1322,7 @@ process GET_BAR_CHART_SCORE_MOTIF_POLYA{
 process GET_SOFTCLIPPED_DISTRIBUTION{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase6_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/softclipped_distribution", mode: 'copy'
 
 	input:
 	tuple path(bams), path(bais), val(specific_sample)
@@ -1129,35 +1342,76 @@ process GET_SOFTCLIPPED_DISTRIBUTION{
 
 process GET_NUM_POLYA_SITES{
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase7_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/num_polyA", mode: 'copy'
 
 	input:
-	tuple path(bams), path(bais), val(specific_sample)
+	tuple path(beds), val(specific_sample)
 	val csv_output_name
-	val barchart_output_name
-	path single_linkage
+	val annotated
 	path python_script
 
 	output:
 	path "${specific_sample}_${csv_output_name}"
-	path "${specific_sample}_${barchart_output_name}"
-
+	
 	script:
 	"""
 	python3 ${python_script}\
-	--bam ${bams}\
-	--slc_distance ${params.slc_distance_parameter}\
-	--num_polyA_in_slc ${params.folder_template}/result/${specific_sample}/in_slc_num_polyA\
+	--bed ${beds}\
 	--csv_out_name ${specific_sample}_${csv_output_name}\
-	--barchart_out_name ${specific_sample}_${barchart_output_name}\
+	--annotated ${annotated}\
 	--cluster_threshold ${params.cluster_threshold}
 	"""	
 }
 
+process MERGE_ALL_NUM_PAS_CSVS{
+	label "bash"
+	publishDir "${params.folder_template}/result/${params.result_folder}/num_polyA", mode: 'copy'
+	
+	input:
+	path(unannotated_concat_csv)
+	path(annotated_concat_csv)
+	path(intergenic_concat_csv)
+	path(intronic_concat_csv)
+	path(exonic_concat_csv)
+	path(control_csv)
+	val(out_name)
+
+	output:
+	path("${out_name}")
+
+	script:
+	"""
+	cat *.csv > ${out_name}
+	"""
+}
+
+process FUSE_MOTIF_SCORE_NUM_PAS{
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/num_polyA", mode: 'copy'
+	
+	input:
+	path(total_motif_scores)
+	path(polyA_motif_scores)
+	path(total_num_polyA_csv)
+	val(out_name)
+	path python_script
+
+	output:
+	path("${out_name}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	--total_motif_scores_csv ${total_motif_scores}\
+	--polyA_csv ${polyA_motif_scores}\
+	--total_num_polyA_csv ${total_num_polyA_csv}\
+	--csv_out_name ${out_name}	
+	"""
+}
 process GET_BAR_CHART_NUM_POLYA{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/num_polyA", mode: 'copy'
 	
 	input:
 	path(csvs)
@@ -1177,7 +1431,7 @@ process GET_BAR_CHART_NUM_POLYA{
 
 process GET_GENE_COVERAGE{
 	label "custom_python"
-	publishDir "${params.folder_template}/result/${specific_sample}/phase8_output", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/gene_coverage", mode: 'copy'
 
 	input:
 	tuple path(bams), path(bais), val(specific_sample)
@@ -1203,7 +1457,7 @@ process GET_GENE_COVERAGE{
 process GET_TOTAL_NUM_GENES{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/gene_coverage", mode: 'copy'
 	
 	input:
 	path terminal_exons
@@ -1226,7 +1480,7 @@ process GET_TOTAL_NUM_GENES{
 process GET_BAR_CHART_GENE_COVERAGE{
 
 	label "custom_python"
-	publishDir "${params.folder_template}/result/common", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.result_folder}/gene_coverage", mode: 'copy'
 	
 	input:
 	path dedup_csv
@@ -1245,5 +1499,269 @@ process GET_BAR_CHART_GENE_COVERAGE{
 	--polyA_csv_dir ${polyA_csv}\
 	--total_gene_dir ${total_gene_csv}\
 	--coverage_out_file ${coverage_output_name}
+	"""
+}
+
+process SOFTCLIP_PWM_LOGO{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/PWM_logo", mode: 'copy'
+	
+	input:
+	tuple path(bams), path(bais), val(specific_sample)
+	val length_softclip
+	path python_script
+	
+	output:
+	path "${specific_sample}_${params.softclip_pwm_logo}*.png"
+	
+	script:
+	"""
+	python3 ${python_script}\
+	--bam_file ${bams}\
+	--pwm_signature ${specific_sample}_${params.softclip_pwm_logo}\
+	--length_softclipped ${length_softclip}\
+	--use_FC ${params.use_fc}
+	"""
+}
+
+process SPLIT_CSV_BY_CELL_TYPE{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/cell_type_specific", mode: 'copy'
+	
+	input:
+	tuple val(specific_sample), path(metadata)
+	path python_script
+
+	output:
+	tuple path("*_${params.type1}.txt"), path("*_${params.type2}.txt"), val("${specific_sample}")
+
+	script:
+	"""
+	python3 ${python_script}\
+		--cell_type_dir ${metadata}\
+		--txt_output_template ${params.out_template}\
+		--type1 ${params.type1}\
+		--type2 ${params.type2}\
+		--sample_name ${specific_sample}\
+		--sample_type ${params.result_folder}
+	"""
+}
+
+process SPLIT_SAMPLE_BY_TYPE{
+
+	label "samtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/cell_type_specific", mode: 'copy'
+	
+	input:
+	tuple val(specific_sample), path(dedup_bam), path(dedup_bai), path(type1_txt), path(type2_txt)
+
+	output:
+	path("${specific_sample}_${params.type1}_sorted.bam")
+	path("${specific_sample}_${params.type1}_sorted.bam.bai")
+	path("${specific_sample}_${params.type2}_sorted.bam")
+	path("${specific_sample}_${params.type2}_sorted.bam.bai")
+	
+	script:
+	"""
+	samtools view -D CB:${type1_txt} -bh ${dedup_bam} -o ${specific_sample}_${params.type1}.bam  
+	samtools sort ${specific_sample}_${params.type1}.bam -o ${specific_sample}_${params.type1}_sorted.bam  
+	samtools index ${specific_sample}_${params.type1}_sorted.bam
+
+	samtools view -D CB:${type2_txt} -bh ${dedup_bam} -o ${specific_sample}_${params.type2}.bam  
+	samtools sort ${specific_sample}_${params.type2}.bam -o ${specific_sample}_${params.type2}_sorted.bam  
+	samtools index ${specific_sample}_${params.type2}_sorted.bam
+	"""
+}
+
+process MERGE_BY_CELL_TYPE{
+
+	label "samtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+	
+	input:
+	path(type1_bam)
+	path(type1_bai)
+	path(type2_bam)
+	path(type2_bai)
+
+	output:
+	tuple path("merged_${params.type1}_sorted.bam"), path("merged_${params.type1}_sorted.bam.bai") 
+	tuple path("merged_${params.type2}_sorted.bam"), path("merged_${params.type2}_sorted.bam.bai") 
+
+	script:
+	"""
+	samtools merge -f -o merged_${params.type1}.bam *_${params.type1}_sorted.bam
+	samtools sort merged_${params.type1}.bam -o merged_${params.type1}_sorted.bam
+	samtools index merged_${params.type1}_sorted.bam
+
+	samtools merge -f -o merged_${params.type2}.bam *_${params.type2}_sorted.bam
+	samtools sort merged_${params.type2}.bam -o merged_${params.type2}_sorted.bam
+	samtools index merged_${params.type2}_sorted.bam
+	"""
+}
+
+process GET_POLYA_CELL_TYPE{
+
+	label "custom_python"
+	label "super_heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+	
+	input:
+	tuple path(dedup_full_bam), path(dedup_full_bai)
+	val polyA_out
+	val nonpolyA_out
+	path python_script
+
+	output:
+	path("${polyA_out}")
+	path("${nonpolyA_out}")
+	
+	script:
+	"""
+	python3 ${python_script} --bam_input ${dedup_full_bam}\
+	--o_polyA ${polyA_out}\
+	--o_nonpolyA ${nonpolyA_out}\
+	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
+	--percentage_threshold ${params.polyA_percentage_threshold}\
+	--length_threshold ${params.length_threshold}\
+	--use_fc ${params.use_fc}
+	"""
+}
+
+process SORT_CELL_TYPE{
+
+	echo true
+	label "samtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+	
+	input:
+	path(bam)
+
+	output:
+	tuple path("*_sorted.bam"), path("*_sorted.bam.bai")
+
+	script:
+	"""	
+	input=\$(basename ${bam})
+	prefix=\$(echo \$input | cut -d '.' -f 1)
+
+	samtools sort ${bam} -o \${prefix}_sorted.bam
+	samtools index \${prefix}_sorted.bam
+	"""
+}
+
+process GET_CELL_TYPE_POLYA_UNIQUE_CS_BED{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+	
+	input:
+	tuple path(bams), path(bais)
+	val(polyA_unique_cs_bed)
+	path python_script
+
+	output:
+	path("${polyA_unique_cs_bed}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	--bam ${bams}\
+	--bed_out ${polyA_unique_cs_bed}\
+	--use_fc ${params.use_fc}
+	"""
+}
+
+process PERFORM_CLUSTERING_CELL_TYPE{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+	
+	input:
+	path(cleavage_site_bed)
+	val(clustered_bed)
+	path python_script
+
+	output:
+	path("${clustered_bed}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	in_bed ${cleavage_site_bed}\
+	--out ${clustered_bed}\
+	--du ${params.cluter_up}\
+	--dd ${params.cluster_down}\
+	--c ${params.num_cores}
+	"""
+}
+
+process BED_INTERSECT_CELL_TYPE{
+
+	label "bedtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+
+	input:
+	path(clustered_bed_file)
+	// either terminal_exons, exons or genes.bed
+	path(bed)
+	val(type)
+	val(intersect_out_name)
+	
+	output:
+	path("${type}_${intersect_out_name}.bed")
+	
+	script:
+	"""
+	bedtools intersect -s -u -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > ${type}_${intersect_out_name}.bed
+	"""
+}
+
+process DISTANCE_SCATTER{
+
+	label "custom_python"
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+	
+	input:
+	path(polyA_type1_bed)
+	path(polyA_type2_bed)
+	path terminal_exons
+	path python_script
+
+	output:
+	path "${params.type1_type2_distance_csv}"
+
+	script:
+	"""
+	python3 ${python_script}\
+	--type1_polyA_bed ${polyA_type1_bed}\
+	--type2_polyA_bed ${polyA_type2_bed}\
+	--bed_input ${terminal_exons}\
+	--distance_out ${params.type1_type2_distance_csv}
+	"""
+}
+
+process T1_T2_SCATTER{
+
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+	
+	input:
+	path t1_t2_distance_csv
+	path python_script
+
+	output:
+	path "${params.type1_type2_scatter}*"
+
+	script:
+	"""
+	python3 ${python_script}\
+	--distance_csv_dir ${t1_t2_distance_csv}\
+	--output_name ${params.type1_type2_scatter}\
+	--type1 ${params.type1}\
+	--type2 ${params.type2}
 	"""
 }

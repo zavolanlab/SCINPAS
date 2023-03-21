@@ -130,18 +130,28 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             len_pA = left_end[1]
         
         elif use_fc:
-            OCS = read.get_tag('OC')
-            FCS = read.get_tag('FC')
+            OCS = read.get_tag('XO')
+            FCS = read.get_tag('XF')
             difference = OCS - FCS
             potential_polyA = full_sequence[len(full_sequence) - left_end[1] + difference : len(full_sequence)]
+            # length of a softclipped region
             len_pA = left_end[1] - difference
+            
         # you should use num_A not num_T because you use full_sequence rather than fasta.fetch()
         num_A = count_A(potential_polyA)
         percentage_A = (num_A/len_pA)*100
-        if percentage_A >= percentage_threshold and num_A >= length_threshold:
+        
+        # for softclipped length of <=6, you want to have 100% "A"        
+        if len_pA <= 5:
+            percentage_threshold = 100
+                
+        # decide whether a read is polyA or not
+        if len_pA >= length_threshold and percentage_A >= percentage_threshold:
             return True
+        
         else:
             return False
+        
     # if right_end[0] == 4, it means soft clipped on the right side of a read.
     # right_end[1] gives how many bases are soft clipped on the right side.
     elif rev == False and right_end[0] == 4:
@@ -150,18 +160,27 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             len_pA = right_end[1]
         
         elif use_fc:
-            OCS = read.get_tag('OC')
-            FCS = read.get_tag('FC')
+            OCS = read.get_tag('XO')
+            FCS = read.get_tag('XF')
             difference = FCS - OCS
             potential_polyA = full_sequence[len(full_sequence) - right_end[1] + difference : len(full_sequence)]
+            # length of a softclipped region
             len_pA = right_end[1] - difference
             
         num_A = count_A(potential_polyA)
         percentage_A = (num_A/len_pA)*100
-        if percentage_A >= percentage_threshold and num_A >= length_threshold:
+        
+        # for softclipped length of <=6, you want to have 100% "A"  
+        if len_pA <= 5:
+            percentage_threshold = 100
+        
+        # decide whether a read is polyA or not
+        if len_pA >= length_threshold and percentage_A >= percentage_threshold:
             return True
+        
         else:
-            return False    
+            return False 
+        
     # a read does not have softclipped region
     # or it has soft clipped region but not at the right direction.
     else:

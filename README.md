@@ -18,7 +18,6 @@ directly from single 3'end RNA sequencing data.
 
 ```bash
 mamba create -n scinpas nextflow
-mamba env update -n scinpas -f src/requirements.txt
 ```
 
 2) Data must be single cell 3'end RNA sequencing data.
@@ -38,11 +37,11 @@ At the moment, the pipeline supports 10X genomics 3'end sequencing data.
 
 9) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
 
-10) raw negative control must be structured as: A10X_SAMPLE_UmiRaw.bam (and A10X_SAMPLE_UmiRaw.bam.bai)
-There should be at least 1 letter before 10X to differentiate between input file.
+10) raw negative control must be structured as: *10X_A_BUmiRaw.bam (and *10X_A_BUmiRaw.bam.bai)
+There should be at least 1 letter before 10X to differentiate between input file, by default "A" is used.
 
-11) deduplicated negative control must be structured as: A10X_SAMPLE_UmiDedup.bam (and A10X_SAMPLE_UmiDedup.bam.bai)
-There should be at least 1 letter before 10X to differentiate between input file.
+11) deduplicated negative control must be structured as: *10X_A_BUmiDedup.bam (and *10X_A_BUmiDedup.bam.bai)
+There should be at least 1 letter before 10X to differentiate between input file, by default "A" is used.
 
 raw negative control refers to the raw bam file of one of sample data. (same data but named differently).
 deduplicated negative control refers to the UMI-tools deduplicated version of one of sample data. 

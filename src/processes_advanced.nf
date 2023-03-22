@@ -1254,7 +1254,7 @@ process COMBINE_MOTIF_ORDERS{
 process COMPUTE_SCORES_FOR_MOTIF_ALTER{
 
 	label "custom_python"
-	label "heavy_computation"
+	label "heavy_memory"
 	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/motif_freq_plot", mode: 'copy'
 
 	input:

@@ -14,12 +14,36 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import statistics
+import csv
+
 """
-Aim : From deduplicated bam file of a sample, create a new deduplicated bam file
+Aim1 : From deduplicated bam file of a sample, create a new deduplicated bam file
 in which their alignments are fixed.
 
 i.e. fixed cleavage site is saved in a new 'FC' tag per each read.
+
+Aim2 : save a csv file which contains the number softclipped reads that are corrected/not corrected.
 """
+
+def write_csv(row_data, o_file):
+    """
+    Parameters
+    ----------
+    row_data : list
+        A list that contains the total number of softclipped reads, corrected softclipped reads, uncorrected softclipped reads
+        and % of corrected softclipped reads.
+    
+    o_file : string
+        output csv file name    
+
+    Returns
+    -------
+    returns nothing but saves the output in csv format.
+    """
+    
+    w = csv.writer(open(o_file, "w"))
+    w.writerow(row_data)
+    
 def write_output(final_reads, out_name, out_mode, sam):
     """
     Parameters
@@ -45,7 +69,77 @@ def write_output(final_reads, out_name, out_mode, sam):
     outfile = pysam.AlignmentFile(out_name, out_mode, template=sam)
     for read in final_reads:
         outfile.write(read)
+
+def find_trace_back(genome_Seq, read_softclipped, pos):
+    
+    # because you revert sequences, you also revert position
+    corrected_pos = len(genome_Seq) - 1 - pos
+    genome_Seq = [elem for elem in genome_Seq]
+    read_softclipped = [elem for elem in read_softclipped]
+    genome_Seq.reverse()
+    read_softclipped.reverse()
+    # i is indicating how much you went backwards
+    for i in range(corrected_pos, len(genome_Seq)):
         
+        # if you did not correct more than 3bp (dont have enough base pairs to go back), 
+        # that means you had all mismatches on the way.
+        # you go forward only 2bp at most because you had all mismatches. (moving less than 2bp currently not possible with the threshold we set)
+        # So dont fix the alignment in this case
+        if corrected_pos >= len(genome_Seq) - 3: 
+            trace_back = "no_fix_needed"
+            break
+        
+        # if you go back too far until len(genome_Seq)-3,
+        # then that means you have only 2bp to look at.
+        # to find corrected cleavage site as accurate as possible,
+        # if 2bp in advance matches then stop backtracing there.
+        elif i == len(genome_Seq) - 3:
+            r_1bp_ahead = read_softclipped[i + 1]
+            r_2bp_ahead = read_softclipped[i + 2]            
+
+            g_1bp_ahead = genome_Seq[i + 1]
+            g_2bp_ahead = genome_Seq[i + 2]
+            
+            if r_1bp_ahead == g_1bp_ahead and r_2bp_ahead == g_2bp_ahead:
+                trace_back = i - corrected_pos
+                break
+
+        # if you go back too far until len(genome_Seq)-2,
+        # then that means you have only 1bp to look at.
+        # to find corrected cleavage site as accurate as possible,
+        # if 1bp in advance matches then stop backtracing there.
+        elif i == len(genome_Seq) - 2:
+            r_1bp_ahead = read_softclipped[i + 1]           
+
+            g_1bp_ahead = genome_Seq[i + 1]
+            
+            if r_1bp_ahead == g_1bp_ahead:
+                # how much you go back
+                trace_back = i - corrected_pos
+                break
+        
+        # if you reach here it means you backtrace everything.
+        # Hence do not fix the alignment
+        elif i == len(genome_Seq) - 1:
+            trace_back = "no_fix_needed"
+            break            
+                        
+        else:    
+            r_1bp_ahead = read_softclipped[i + 1]
+            r_2bp_ahead = read_softclipped[i + 2]
+            r_3bp_ahead = read_softclipped[i + 3]
+            
+            g_1bp_ahead = genome_Seq[i + 1]
+            g_2bp_ahead = genome_Seq[i + 2]
+            g_3bp_ahead = genome_Seq[i + 3]
+            
+            if r_1bp_ahead == g_1bp_ahead and r_2bp_ahead == g_2bp_ahead and r_3bp_ahead == g_3bp_ahead:
+                # how much you go back
+                trace_back = i - corrected_pos
+                break
+        
+    return trace_back
+           
 def find_positions_to_fix (genome_seq, read_Softclipped, tolerance_threshold, rev):
     """
     Parameters
@@ -71,13 +165,12 @@ def find_positions_to_fix (genome_seq, read_Softclipped, tolerance_threshold, re
     -------        
     n_proceed : int
         From old cleavage site, how many base pairs do we have to go? in order to get a fixed cleavage site.
+    
+    cleavage_site_fixed : bool
+        whether or not a cleavage site is corrected.
     """      
     assert len(genome_seq) == len(read_Softclipped)
     n_mismatch = 0
-    previous_move = 'match'
-    # last position will have at least 1 mismatch.
-    # Hence consecutive_mismatch >= 1
-    consecutive_mismatch = 1
     end_pos = 0
     
     # if a read maps to - strand, you have to start editing from the right end
@@ -96,32 +189,30 @@ def find_positions_to_fix (genome_seq, read_Softclipped, tolerance_threshold, re
         
         if read_nt != genome_nt:
             n_mismatch += 1
-            if previous_move == 'mismatch':
-                consecutive_mismatch += 1
-            previous_move = 'mismatch'
             
-            if n_mismatch > tolerance_threshold or i == len(genome_seq) - 1:
+            if n_mismatch >= tolerance_threshold or i == len(genome_seq) - 1:
                 end_pos = i
                 break
             
             continue
         
-        elif read_nt == genome_nt:
-            # consecutive_mismatch == 1 means you have mismatch = 1. You incremented in advance.
-            # Because when you have mismatch, consecutive mismatch only increases when you had mismatch just before that position.
-            # It also function as reseting consecutive_mismatch in case you have a match.
-            consecutive_mismatch = 1
-            previous_move = 'match'
-            
-            if n_mismatch > tolerance_threshold or i == len(genome_seq) - 1:
+        elif read_nt == genome_nt:            
+            if n_mismatch >= tolerance_threshold or i == len(genome_seq) - 1:
                 end_pos = i
                 break
             
             continue
-        
-    n_proceed = end_pos - consecutive_mismatch
-
-    return n_proceed  
+    
+    trace_back = find_trace_back(genome_seq, read_Softclipped, end_pos)
+    if trace_back == "no_fix_needed":
+        n_proceed = 0
+        cleavage_site_fixed = False
+    
+    else:
+        n_proceed = end_pos - trace_back
+        cleavage_site_fixed = True
+    
+    return n_proceed, cleavage_site_fixed  
 
 def extract_sequences(Read, fasta):
     """
@@ -203,8 +294,16 @@ def fix_soft_clipped(sam, fasta_file):
     changed_reads : list
         a list of deduplicated reads in which their alignments are fixed.
         (cleavage sites are fixed and saved in the 'FC' tag)
+    
+    num_fixed : int
+        number of softclipped reads that are corrected
+
+    num_unfixed : int
+        number of softclipped reads that are not corrected        
     """       
     changed_reads = []
+    num_fixed = 0
+    num_unfixed = 0
     for read in sam.fetch():
         rev = read.is_reverse
         alignedRefPositions = read.get_reference_positions()
@@ -213,33 +312,49 @@ def fix_soft_clipped(sam, fasta_file):
         tuples = read.cigartuples
         left_end = tuples[0]
         right_end = tuples[-1]
-                        
+        
+        # soft clipped read. candidate for being corrected.
         if rev == True and left_end[0] == 4:
             genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)          
-            n_proceed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
+            n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
             
             cleavage_site = int(refStart)
-            fixed_cleavage_site = cleavage_site - n_proceed - 1
-        
+            # fixed_cleavage_site = cleavage_site - n_proceed - 1
+            fixed_cleavage_site = cleavage_site - n_proceed
+            
+            if cleavage_site_fixed == True:
+                num_fixed += 1
+            
+            else:
+                num_unfixed += 1        
+                
         # if there is no softclipped region, use original cleavage site.
         # because there isnt a thing to extend mapped region.
         elif rev == True and left_end[0] != 4:            
             cleavage_site = int(refStart)
             fixed_cleavage_site = cleavage_site
-            
+       
+        # soft clipped read. candidate for being corrected.
         elif rev == False and right_end[0] == 4:
             genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)          
-            n_proceed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
+            n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
             
             cleavage_site = int(refEnd)
-            fixed_cleavage_site = cleavage_site + n_proceed + 1
+            # fixed_cleavage_site = cleavage_site + n_proceed + 1
+            fixed_cleavage_site = cleavage_site + n_proceed
             
+            if cleavage_site_fixed == True:
+                num_fixed += 1
+            
+            else:
+                num_unfixed += 1      
+                
         # if there is no softclipped region, use original cleavage site.
         # because there isnt a thing to extend mapped region.        
         elif rev == False and right_end[0] != 4:          
             cleavage_site = int(refEnd)
             fixed_cleavage_site = cleavage_site 
-        
+                               
         # correct cleavage site and fixed cleavage site:
         # because bam file is 0-index based whilst pysam and bed files are 1-index based.
         # if you want to save it in bam file, you have to add 1bp in cleavage site and fixed cleavage site.
@@ -248,11 +363,10 @@ def fix_soft_clipped(sam, fasta_file):
         fixed_cleavage_site += 1
         # save the original and fixed cleavage site into OC and FC tag respectively.     
         read.set_tag("XO", cleavage_site)
-        read.set_tag("XF", fixed_cleavage_site)
-
+        read.set_tag("XF", fixed_cleavage_site)        
         changed_reads.append(read)
-        
-    return changed_reads
+            
+    return changed_reads, num_fixed, num_unfixed
             
 def get_inputs():
     parser = argparse.ArgumentParser(description = "fix softclipped regions to get better cleavage sites" )
@@ -286,12 +400,21 @@ def run_process():
     bam, fasta, bam_out = get_inputs()
     print('successfully got inputs')
     
-    changed_reads = fix_soft_clipped(bam, fasta)
+    changed_reads, num_fixed, num_unfixed = fix_soft_clipped(bam, fasta)
     print('successfully added new tags')
     print('successfully got dictionary of new cleavage_sites')
     
     write_output(changed_reads, bam_out, "wb", bam)
     print('successfully wrote a new bam file')
+    
+    total = num_fixed + num_unfixed
+    percentage = (num_fixed*100)/total
+    
+    row = [total, num_fixed, num_unfixed, percentage]
+    out_file = "num_fixed_unfixed.csv"
+    
+    write_csv(row, out_file)
+    print('successfully saved the number of corrected/uncorrected soft clipped reads')
     
 if __name__ == "__main__":
     run_process()

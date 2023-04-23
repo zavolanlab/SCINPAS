@@ -130,8 +130,8 @@ def get_longest_te_positions(filtered_terminal_Exons):
     
     end_longest_te: end position of the longest terminal exon where current pA site maps to.
     """      
-    start_positions = np.asarray(filtered_terminal_Exons['start'])
-    end_positions = np.asarray(filtered_terminal_Exons['end'])
+    start_positions = np.asarray(filtered_terminal_Exons['start'].copy())
+    end_positions = np.asarray(filtered_terminal_Exons['end'].copy())
     assert(len(start_positions) == len(end_positions))
     
     spans = (end_positions - start_positions)
@@ -189,9 +189,12 @@ def get_GX_distance_dict(dictionary, terminal_exons):
             # convert frequency into probability so that we compute average easily.
             probability = frequency/tot_frequency
             
+            # find all terminal exons of a particular gene only that overlaps with the pA cluster.
             filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)]    
+                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)\
+                                                         & (terminal_exons['id'] == gene)].copy()   
             
+            print(filtered_terminal_exons)    
             # whther a current pA site maps to single or multiple terminal exons, always choose the longest terminal exon.
             start_longest_te, end_longest_te = get_longest_te_positions(filtered_terminal_exons)
             start_to_end_d = start_to_end_distance(cs, start_longest_te, end_longest_te, direction)
@@ -235,7 +238,7 @@ def group_by_gene(cell_type_bed_input, terminal_exons):
             
             # subset terminal exon bed file (gtf) with overlapping span.
             filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)]
+                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
             
             genes = list(set(filtered_terminal_exons['id']))
             n_genes = len(genes)

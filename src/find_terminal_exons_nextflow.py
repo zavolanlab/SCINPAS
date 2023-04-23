@@ -141,8 +141,8 @@ def remove_duplicated_exons (final_df):
     final_deduplicated_df = pd.DataFrame(columns = ['seqid', 'start', 'end', 'id', 'score', 'strand'])
     for index, row in final_df.iterrows():
         if index <= len(final_df)-2: 
-            current_row = final_df.iloc[index]
-            next_row = final_df.iloc[index+1]
+            current_row = final_df.iloc[index].copy()
+            next_row = final_df.iloc[index+1].copy()
             same = check_same_exon (current_row, next_row)
             
             if same:

@@ -19,7 +19,7 @@ import argparse
 Aim : draw A/T/G/C frequency plot for a specific sample and a specific class of reads. (considers all chromosomes.)
 class = annotated, unannotated, intronic, intergenic or exonic
 """
-def draw_lineGraphs(As, Ts, Gs, Cs, file, window):
+def draw_lineGraphs(As, Ts, Gs, Cs, file_template, window):
     """
     Parameters
     ----------
@@ -35,8 +35,8 @@ def draw_lineGraphs(As, Ts, Gs, Cs, file, window):
     Cs : list
         A list which contains frequency of "C" nucleotide from -99 to 100bp of a cleavage site.
     
-    file : string
-        file name of A/T/G/C frequency plot of a specific class in a specific sample.
+    file_template : string
+        output file template
         
     Returns
     -------
@@ -56,8 +56,13 @@ def draw_lineGraphs(As, Ts, Gs, Cs, file, window):
     plt.xlabel('distance', fontsize = 'x-large')
     plt.ylabel('relative frequency', fontsize = 'x-large')
         
-    plt.rcParams['font.family'] = "Arial"
-    plt.savefig(file, bbox_inches='tight')
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
     
 def convert_to_list(matrix):
     """

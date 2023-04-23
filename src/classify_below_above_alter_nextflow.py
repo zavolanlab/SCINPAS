@@ -125,7 +125,8 @@ def separate_polyAT(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
     overlap_count = 0
     for read in polyA_reads:
         chrom, rev, end = get_cleavage_site(read, use_fixed_cs)
-        filtered_bed = bed[(bed['seqid'] == chrom) & (bed['start'] <= end) & (bed['end'] >= end) & (bed['strand'] == rev)]
+        # use copy() to avoid any misbehaviour
+        filtered_bed = bed[(bed['seqid'] == chrom) & (bed['start'] <= end) & (bed['end'] >= end) & (bed['strand'] == rev)].copy()
         
         if len(filtered_bed) == 1:
             sequence_id = filtered_bed['seqid'].values[0]
@@ -134,10 +135,11 @@ def separate_polyAT(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             direction = filtered_bed['strand'].values[0]
             c_id = filtered_bed['id'].values[0]
             
-            cluster_id = str(sequence_id) + str(':') + str(start_pos) + str(':') + str(end_pos) + str(':') + str(direction)\
-            + str(':') + str(c_id)
+            # cluster_id = str(sequence_id) + str(':') + str(start_pos) + str(':') + str(end_pos) + str(':') + str(direction)\
+            # + str(':') + str(c_id)
+            # pA_id = polyA_cluster_id + '_' + cluster_id
             
-            pA_id = polyA_cluster_id + '_' + cluster_id
+            pA_id = polyA_cluster_id
             # set sub-cluster ID
             read.set_tag("Zi", pA_id)
             # set boolean mark that specifies whether a read is located in both clusters or not. 
@@ -148,6 +150,7 @@ def separate_polyAT(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             final_reads.append(read)
             
         elif len(filtered_bed) == 2:
+            # a read is mapping between 2 clusters exactly
             print('overlapping cluster......')
             print(str(filtered_bed))
             overlap_count += 1
@@ -160,11 +163,11 @@ def separate_polyAT(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             direction = further_filtered_bed['strand']
             c_id = further_filtered_bed['id']
             
-            cluster_id = str(sequence_id) + str(':') + str(start_pos) + str(':') + str(end_pos)\
-            + str(':') + str(direction) + str(':') + str(c_id)
+            # cluster_id = str(sequence_id) + str(':') + str(start_pos) + str(':') + str(end_pos)\
+            # + str(':') + str(direction) + str(':') + str(c_id)
+            # pA_id = polyA_cluster_id + '_' + cluster_id
             
-            pA_id = polyA_cluster_id + '_' + cluster_id
-            
+            pA_id = polyA_cluster_id
             read.set_tag("Zi", pA_id)
             
             read.set_tag("Zd", str(1))

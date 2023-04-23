@@ -10,6 +10,8 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
+import seaborn as sns
+import pandas as pd
 
 
 
@@ -64,12 +66,12 @@ def get_mean(scores_list):
     mean_val = np.mean(scores_list)         
     return mean_val
         
-def plot_histogram(file, log_distances, cntrl_log_distances):
+def plot_histogram(file_template, log_distances, cntrl_log_distances):
     """
     Parameters
     ----------
-    file : string
-        output histogram file name
+    file_template : string
+        output file template
     
     log_distances : list of float
         A list that contains log10 'absolute' distance between a pA site(representative cleavage site) from sample and an end of a terminal exon.
@@ -87,17 +89,27 @@ def plot_histogram(file, log_distances, cntrl_log_distances):
     plt.yticks(fontsize='x-large')
     plt.xlabel('log10 distance', fontsize = 'x-large')
     plt.ylabel('frequency', fontsize = 'x-large')
+            
+    sample_names = ['sample'] * len(log_distances)
+    control_names = ['control'] * len(cntrl_log_distances)
+                       
+    log_distances += cntrl_log_distances        
+    sample_names += control_names
+      
+    distance_data = {'distance': log_distances, 'name': sample_names}
+    distance_df = pd.DataFrame(distance_data)
     
-    plt.rcParams['font.family'] = "Arial"
-        
-    bins = np.arange(min(min(log_distances), min(cntrl_log_distances)), max(max(log_distances), max(cntrl_log_distances)), 0.05)
-                      
-    plt.hist(log_distances, bins = bins, histtype = "step", cumulative = True, density = True, label = "sample",  ec = 'blue', fc = 'None') 
-    plt.hist(cntrl_log_distances, bins = bins, histtype = "step", cumulative = True, density = True, label = "negative control", ec = 'purple', fc = 'None')                     
+    sns.ecdfplot(data = distance_df, x = 'distance', hue = 'name')                    
 
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
     
-    plt.savefig(file, bbox_inches='tight')
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
 
 def get_inputs():
     

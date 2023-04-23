@@ -12,15 +12,15 @@ import numpy as np
 """
 Aim: Plot a distribution of span of a cluster with same CB + UB tags or CB + YB tags.
 """
-def draw_histogram(logspans, file_name): 
+def draw_histogram(logspans, file_template): 
     """
     Parameters
     ----------
     logspans : a list
         A list of spans in log10 scale.
     
-    file_name : string 
-        output file name.
+    file_template : string
+        output file template
 
     Returns
     -------
@@ -39,9 +39,14 @@ def draw_histogram(logspans, file_name):
     plt.xlabel('log spans', fontsize = 'x-large')
     plt.ylabel('frequency', fontsize = 'x-large')
         
-    plt.rcParams['font.family'] = "Arial"
-    plt.savefig(file_name, bbox_inches='tight')
-
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
+    
 def read_spans (input_directory):
     """
     Parameters

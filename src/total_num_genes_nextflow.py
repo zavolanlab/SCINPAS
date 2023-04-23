@@ -68,8 +68,8 @@ def get_total_number_genes(bed, Species):
     bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
     
     for chromosome in chromosomes:
-        rows = bed[bed['seqid'] == chromosome]
-        filtered_rows = rows[rows['score'] <= 3]
+        rows = bed[bed['seqid'] == chromosome].copy()
+        filtered_rows = rows[rows['score'] <= 3].copy()
         unique_genes.update(filtered_rows['id'])
     
     total_num_genes = len(list(unique_genes))

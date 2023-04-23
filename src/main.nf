@@ -2,13 +2,11 @@
 
 nextflow.enable.dsl=2
 
-include {PREPARE_SINGLE_LINKAGE} from './processes_advanced'
 include {FIND_TERMINAL_EXONS} from './processes_advanced'
 include {FIND_EXONS_GENES_BED} from './processes_advanced'
 include {polyA} from './polyA_workflow_advanced'
 
 workflow{
-	(prepare_singleL, sl_script) = PREPARE_SINGLE_LINKAGE(params.cpp)
 
 	// To get different inputs, chromosomes and negative controls
 	// according to the species.
@@ -56,6 +54,6 @@ workflow{
 	// Get exons.bed and genes.bed
 	(exons, genes) = FIND_EXONS_GENES_BED(params.find_exons_genes_script)
 
-	polyA(inputs, prepare_singleL, sl_script, chrs, terminal_exons, exons, genes, negative_control_dedup, negative_control_raw, num_chromosomes)
+	polyA(inputs, chrs, terminal_exons, exons, genes, negative_control_dedup, negative_control_raw, num_chromosomes)
 }
 

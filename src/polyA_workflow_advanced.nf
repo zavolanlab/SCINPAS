@@ -3,12 +3,14 @@
 nextflow.enable.dsl=2
 
 // import and make alias. need to make alias because process can be invoked once and only once
-include {PREPARE_SINGLE_LINKAGE; TRIM_NEG_CONTROL; SPLIT_PHASE1; DEDUP; MERGE; UNCOUPLE_CSV_WITH_SAMPLE; FILTER_FURTHER_TERMINAL_EXONS;\
+include {TRIM_NEG_CONTROL; SPLIT_PHASE1; DEDUP; MERGE; UNCOUPLE_CSV_WITH_SAMPLE; FILTER_FURTHER_TERMINAL_EXONS;\
 SPLIT_PER_SAMPLE; ONE_BY_ONE; GET_NON_SOFTCLIP; GET_A_FREQ_IN_NONSOFTCLIP; MAKE_COUNT_SAMPLE; GET_BAR_CHART;\
 GET_SPAN_SPLIT; GET_SPAN_HIST; GET_D_HISTOGRAM_ALTER; FIX_SOFTCLIPPED_REGION; MERGE_CONTROL;\
 COMBINE_MOTIF_ORDERS; GET_MOTIF_FREQ_GTF_PLOT; SPLIT_MOTIF_ORDER_PER_SAMPLE; MOTIF_ORDERS_ONE_BY_ONE; COMPUTE_SCORES_FOR_MOTIF_ALTER;\
 GET_BAR_CHART_SCORE_MOTIF_POLYA; GET_SOFTCLIPPED_DISTRIBUTION; MERGE_ALL_NUM_PAS_CSVS; FUSE_MOTIF_SCORE_NUM_PAS; GET_BAR_CHART_NUM_POLYA; GET_TOTAL_NUM_GENES;\
-GET_BAR_CHART_GENE_COVERAGE; SOFTCLIP_PWM_LOGO; SPLIT_CSV_BY_CELL_TYPE; SPLIT_SAMPLE_BY_TYPE; MERGE_BY_CELL_TYPE; DISTANCE_SCATTER; T1_T2_SCATTER} from './processes_advanced'
+GET_BAR_CHART_GENE_COVERAGE; SOFTCLIP_PWM_LOGO; SPLIT_CSV_BY_CELL_TYPE; SPLIT_SAMPLE_BY_TYPE; MERGE_BY_CELL_TYPE; DISTANCE_SCATTER; T1_T2_SCATTER;\
+UNCOUPLE_BAM_WITH_SAMPLE; MERGE_ALL_SAMPLES; GET_POLYA_UNIQUE_CLEAVAGE_SITES_ALL_SAMPLES;\
+PERFORM_CLUSTERING_ALL_SAMPLES; GET_OVERLAP; GET_TOP_OVERLAP;} from './processes_advanced'
 
 include {PREPARE_IN_SLC as PREPARE_IN_SLC_DATA} from './processes_advanced'
 include {PREPARE_IN_SLC as PREPARE_IN_SLC_CONTROL_DEDUP} from './processes_advanced'
@@ -281,27 +283,52 @@ include {SORT_CELL_TYPE as SORT_POLYA_TYPE2_SPECIFIC} from './processes_advanced
 include {GET_CELL_TYPE_POLYA_UNIQUE_CS_BED as POLYA_TYPE1_BAM_TO_BED} from './processes_advanced'
 include {PERFORM_CLUSTERING_CELL_TYPE as PERFORM_CLUSTERING_CELL_TYPE1} from './processes_advanced'
 
+include {BED_NO_INTERSECT_CELL_TYPE as GENE_NO_INTERSECT_TYPE1} from './processes_advanced'
 include {BED_INTERSECT_CELL_TYPE as GENE_INTERSECT_TYPE1} from './processes_advanced'
+include {BED_NO_INTERSECT_CELL_TYPE as EXON_NO_INTERSECT_TYPE1} from './processes_advanced'
 include {BED_INTERSECT_CELL_TYPE as EXON_INTERSECT_TYPE1} from './processes_advanced'
+include {BED_NO_INTERSECT_CELL_TYPE as TE_NO_INTERSECT_TYPE1} from './processes_advanced'
 include {BED_INTERSECT_CELL_TYPE as TE_INTERSECT_TYPE1} from './processes_advanced'
 
 include {BED_INTERSECT_CELL_TYPE as TE_FURTHER_INTERSECT_TYPE1} from './processes_advanced'
+
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_INTERGENIC_TYPE1} from './processes_advanced'
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_INTRONIC_TYPE1} from './processes_advanced'
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_EXONIC_TYPE1} from './processes_advanced'
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_TE_TYPE1} from './processes_advanced'
+
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE1_NUM_POLYA_SITES_ALLPAS} from './processes_advanced'
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE1_NUM_POLYA_SITES_INTRONIC} from './processes_advanced'
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE1_NUM_POLYA_SITES_EXONIC} from './processes_advanced'
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE1_NUM_POLYA_SITES_TE} from './processes_advanced'
 
 // cell type2 specific
 include {GET_CELL_TYPE_POLYA_UNIQUE_CS_BED as POLYA_TYPE2_BAM_TO_BED} from './processes_advanced'
 include {PERFORM_CLUSTERING_CELL_TYPE as PERFORM_CLUSTERING_CELL_TYPE2} from './processes_advanced'
 
+include {BED_NO_INTERSECT_CELL_TYPE as GENE_NO_INTERSECT_TYPE2} from './processes_advanced'
 include {BED_INTERSECT_CELL_TYPE as GENE_INTERSECT_TYPE2} from './processes_advanced'
+include {BED_NO_INTERSECT_CELL_TYPE as EXON_NO_INTERSECT_TYPE2} from './processes_advanced'
 include {BED_INTERSECT_CELL_TYPE as EXON_INTERSECT_TYPE2} from './processes_advanced'
+include {BED_NO_INTERSECT_CELL_TYPE as TE_NO_INTERSECT_TYPE2} from './processes_advanced'
 include {BED_INTERSECT_CELL_TYPE as TE_INTERSECT_TYPE2} from './processes_advanced'
 
 include {BED_INTERSECT_CELL_TYPE as TE_FURTHER_INTERSECT_TYPE2} from './processes_advanced'
+
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_INTERGENIC_TYPE2} from './processes_advanced'
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_INTRONIC_TYPE2} from './processes_advanced'
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_EXONIC_TYPE2} from './processes_advanced'
+include {GET_CELL_TYPE_MOTIF_FREQ_PLOT as GET_MOTIF_FREQ_PLOT_TE_TYPE2} from './processes_advanced'
+
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE2_NUM_POLYA_SITES_ALLPAS} from './processes_advanced'
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE2_NUM_POLYA_SITES_INTRONIC} from './processes_advanced'
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE2_NUM_POLYA_SITES_EXONIC} from './processes_advanced'
+include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE2_NUM_POLYA_SITES_TE} from './processes_advanced'
+
 workflow polyA{
 
 	take: 
 	specific_dataFolders
-	prepare_singleLinkage
-	single_linkage
 	chromosomes
 	terminal_exons_bed
 	exons_bed
@@ -312,16 +339,15 @@ workflow polyA{
 	
 	main:
 
-	chromosomes.view()
-	
-	// trimming_and_deduplication
+	//chromosomes.view()
+	//////////////////////////// trimming_and_deduplication ////////////////////////////
 
-	// prepare folders for sample data
-	(in_slc_Folder, in_slc_PWM_Folder, in_slc_motif_Folder, in_slc_num_polyA_Folder, full_data_tuple) = PREPARE_IN_SLC_DATA(specific_dataFolders, params.sample_type, prepare_singleLinkage)
+	// prepare data
+	full_data_tuple = PREPARE_IN_SLC_DATA(specific_dataFolders, params.sample_type)
 
 	// prepare folders for negative control
-	(neg_in_slc_raw, neg_in_slc_PWM_raw, neg_in_slc_motif_raw, neg_in_slc_num_polyA_dedup, negative_control_data_raw_tuple) = PREPARE_IN_SLC_CONTROL_RAW(negative_cntrl_raw, params.sample_type, prepare_singleLinkage)
-	(neg_in_slc_dedup, neg_in_slc_PWM_dedup, neg_in_slc_motif_dedup, neg_in_slc_num_polyA_dedup, negative_control_data_dedup_tuple) = PREPARE_IN_SLC_CONTROL_DEDUP(negative_cntrl_dedup, params.sample_type, prepare_singleLinkage)
+	negative_control_data_raw_tuple = PREPARE_IN_SLC_CONTROL_RAW(negative_cntrl_raw, params.sample_type)
+	negative_control_data_dedup_tuple = PREPARE_IN_SLC_CONTROL_DEDUP(negative_cntrl_dedup, params.sample_type)
 
 	// combine: cartesian product channel between full_data_tuple and chromosomes
 	(possorted_bams_bais, bam_folders) = SPLIT_PHASE1(full_data_tuple.combine(chromosomes))
@@ -341,7 +367,7 @@ workflow polyA{
 	dedup_full_sorted_tuple = MERGE(sorted_dedup_bams_bais.groupTuple(by: 2, sort: true, size: num_chrom))
 	
 	// fix softclipped region (Alignment fixation) in the dedup file.
-	fixed_dedup_full_bams = FIX_SOFTCLIPPED_REGION(dedup_full_sorted_tuple, params.fix_softclipped_script)
+	(fixed_dedup_full_bams, num_fixed_unfixed) = FIX_SOFTCLIPPED_REGION(dedup_full_sorted_tuple, params.fix_softclipped_script)
 	// // add 'FC' tag to negative control.
 	fixed_negative_control_dedup_bam = TRIM_NEG_CONTROL(negative_control_data_dedup_tuple, params.trim_neg_control_script)
 
@@ -361,32 +387,8 @@ workflow polyA{
 
 	// merge UMI-deduplicated negative control by all chromosomes. (needed because we discard chromosomes that are not normal chromosomes. e.g. mouse: 1~19, X, Y)
 	fixed_negative_control_dedup_full_bam_bai = MERGE_CONTROL(dedup_negative_control_sorted_bams_bais.groupTuple(by: 2, sort: true, size: num_chrom))
-	// draw span distribution to compare raw vs dedup vs split.
-	
-	// raw span distribution of samples and control.
-	raw_spans_samples = GET_SPAN_RAW_SAMPLE(possorted_bams_bais, "raw", "sample", params.span_script)
-	raw_spans_control = GET_SPAN_RAW_CONTROL(raw_negative_control_sorted_bams_bais, "raw", "control", params.span_script)
-	raw_spans = raw_spans_samples.mix(raw_spans_control)
 
-	// span distribution after deduplication of samples and control.
-	dedup_spans_samples = GET_SPAN_DEDUP_SAMPLE(sorted_dedup_bams_bais, "dedup", "sample", params.span_script)
-	dedup_spans_control = GET_SPAN_DEDUP_CONTROL(dedup_negative_control_sorted_bams_bais, "dedup", "control", params.span_script)
-	dedup_spans = dedup_spans_samples.mix(dedup_spans_control)
-	
-	// span after "split" step in samples.
-	// This is only available for samples (not control).
-	split_spans = GET_SPAN_SPLIT(splitted_sorted_bams_bais, "split", params.span_script)
-
-	raw_span_merged = CONCAT_SPAN_RAW(raw_spans.groupTuple(by: 1, sort: true, size: num_chrom), params.raw_span)
-	dedup_span_merged = CONCAT_SPAN_DEDUP(dedup_spans.groupTuple(by: 1, sort: true, size: num_chrom), params.dedup_span)
-	split_span_merged = CONCAT_SPAN_SPLIT(split_spans.groupTuple(by: 1, sort: true, size: num_chrom), params.split_span)
-
-	raw_span_hist = GET_SPAN_HIST_RAW(raw_span_merged, params.span_histogram_script, params.raw_span_hist)
-	dedup_span_hist = GET_SPAN_HIST_DEDUP(dedup_span_merged, params.span_histogram_script, params.dedup_span_hist)
-	split_span_hist = GET_SPAN_HIST_SPLIT(split_span_merged, params.span_histogram_script, params.split_span_hist)
-	
-	further_filtered_terminal_exons = FILTER_FURTHER_TERMINAL_EXONS(terminal_exons_bed, params.filter_terminal_exons_script)
-	// get_polyA
+	//////////////////////////// get_polyA ////////////////////////////
 
 	// sort_phase1, sort_phase2 can both do sorting and indexing (for only 1 file) and (for all files) because of tuple
 	// if for all files: (sorted_bam1, sorted_bam1, specific_sample6), (sorted_bam2, sorted_bam2, specific_sample6), (sorted_bam5, sorted_bam5, specific_sample6), (sorted_bam6, sorted_bam6, specific_sample6)
@@ -400,13 +402,13 @@ workflow polyA{
 	
 	// sort full polyA reads for all samples
 	polyA_sorted_full_bams_bais_sample_only = SORT_POLYA_SAMPLE_ONLY(polyA_sample_only)
-	// sort nonpolyA reads
+	// sort nonpolyA reads for all samples
 	nonpolyA_sorted_full_bams_bais = SORT_NONPOLYA(non_polyA_sample_only)	
-	
+
+	// sort full polyA reads for negative control
+	polyA_sorted_full_bams_bais_control = SORT_POLYA_NEG_CONTROL(polyA_control)	
 	// sort nonpolyA reads for negative control
 	nonpolyA_sorted_full_bams_bais_control = SORT_NONPOLYA_CONTROL(non_polyA_control)
-	// sort full polyA reads for negative control
-	polyA_sorted_full_bams_bais_control = SORT_POLYA_NEG_CONTROL(polyA_control)
 
 	// polyA_clustering (sample)
 	polyA_unique_cs_beds_sample = GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED_SAMPLE(polyA_sorted_full_bams_bais_sample_only, params.polyA_unique_cs_bed_sample, params.get_polyA_unique_cs_script)	
@@ -437,12 +439,9 @@ workflow polyA{
 
 	polyA_exonic_clustered_beds_tuple = TE_NO_INTERSECT_TUPLE(all_exonic_clustered_beds_tuple, terminal_exons_bed, params.exonic_template)
 	polyA_TE_clustered_beds_tuple = TE_INTERSECT_TUPLE(all_exonic_clustered_beds_tuple, terminal_exons_bed, params.te_template)
-	// for distance distribution and avg distance (type1 vs type2)
-	polyA_TE_further_filtered_clustered_beds_tuple = TE_FURTHER_INTERSECT_TUPLE(polyA_TE_clustered_beds_tuple, further_filtered_terminal_exons, params.filtered_te_template)
-	
+		
 	// classification of bam (sample)	
 	polyA_sorted_bams_bais_sample = SPLIT_ALL_POLYA(polyA_sorted_full_bams_bais_sample_only.combine(chromosomes), params.out_polyA_partial)
-	// (polyA_sorted_full_bams_sample, polyA_sorted_full_bais_sample) = CONVERT_TUPLE_POLYA_SAMPLE(polyA_sorted_full_bams_bais_sample_only)
 	polyA_sorted_bams_sample_bais = CHANGE_TUPLE_ORDER_POLYA_SAMPLE(polyA_sorted_bams_bais_sample)
 
 	(te_bams, non_te_bams) = CLASSIFY_TE_SAMPLE(polyA_sorted_bams_sample_bais.combine(polyA_TE_clustered_beds_tuple, by:1), params.te_template, params.non_te_template, "TE", params.classify_script)
@@ -478,14 +477,6 @@ workflow polyA{
 
 	isolated_below_full_bams_bais = MERGE_CLASSIFIED_ANNOTATED(annotated_sorted_bams_sample_bais.groupTuple(by:1, sort: true, size: num_chrom), params.below_template)
 	isolated_above_full_bams_bais = MERGE_CLASSIFIED_UNANNOTATED(unannotated_sorted_bams_sample_bais.groupTuple(by:1, sort: true, size: num_chrom), params.above_template)
-	//////////////////////////////////////old version///////////////////////////////////////////////
-	// (polyA_terminal_sorted_full_bams, polyA_terminal_sorted_full_bais) = CONVERT_TUPLE_POLYAT_SAMPLE(polyA_terminal_sorted_full_bams_bais)
-	// (isolated_above_full_bams, isolated_below_full_bams) = CLASSIFY_BELOW_ABOVE(polyA_terminal_sorted_full_bams.mix(polyA_terminal_sorted_full_bais, polyA_TE_below_beds_tuple, polyA_TE_above_beds_tuple).groupTuple(by: 1, sort: true),\
-	// params.te_template, params.below_template, params.above_template, params.classify_below_above_script)
-
-	// isolated_above_full_bams_bais = SORT_ABOVE(isolated_above_full_bams)
-	// isolated_below_full_bams_bais = SORT_BELOW(isolated_below_full_bams)
-	//////////////////////////////////////old version///////////////////////////////////////////////
 
 	// classification of bed (control)
 	polyA_intergenic_clustered_beds_control_tuple = GENES_NO_INTERSECT_CONTROL_TUPLE(polyA_clustered_bed_control_tuple, genes_bed, params.intergenic_control_template)
@@ -534,344 +525,446 @@ workflow polyA{
 
 	isolated_below_full_bams_bais_control = MERGE_CLASSIFIED_ANNOTATED_CONTROL(annotated_sorted_bams_sample_bais_control.groupTuple(by:1, sort: true, size: num_chrom), params.below_template)
 	isolated_above_full_bams_bais_control = MERGE_CLASSIFIED_UNANNOTATED_CONTROL(unannotated_sorted_bams_sample_bais_control.groupTuple(by:1, sort: true, size: num_chrom), params.above_template)
-	// get_A_freq_in_nonsoftclipped_reads
-
-	// get reads that do not have soft-clipped regions.
-	no_softclip_full_bams = GET_NON_SOFTCLIP(fixed_dedup_sorted_full_bams_bais, params.get_no_softclipped_script)
-	no_softclip_sorted_full_bams_bais = SORT_NO_SOFTCLIP(no_softclip_full_bams)
-
-	// get frequency of "A" nucleotide appearing by chance (per each sample). it should be <= 0.3
-	// if this "A" frequency <= 0.3, softclipped length >= 5 is useable as polyA reads. (probability of happening by chance is reasonably low)
-	avg_A_freq_csvs = GET_A_FREQ_IN_NONSOFTCLIP(no_softclip_sorted_full_bams_bais, params.get_avg_a_freq_script)
-
-	// num_reads_per_class
-
-	// get counts csvs per "raw" class and per sample name.
-	raw_counts_csvs = GET_COUNTS_RAW(full_data_tuple, params.counts_raw, params.raw_type, params.get_count_script)
-	raw_counts_csvs_control = GET_COUNTS_RAW_CONTROL(negative_control_data_raw_tuple, params.counts_raw, params.raw_type, params.get_count_script)
-	// merges counts csvs per "raw" class across all samples.
-	merged_raw_counts = CONCAT_COUNTS_RAW(raw_counts_csvs.collect(), params.raw_type)
 	
-	// get counts csvs per "dedup" class and per sample name.
-	dedup_counts_csvs = GET_COUNTS_DEDUP(fixed_dedup_sorted_full_bams_bais, params.counts_dedup, params.dedup_type, params.get_count_script)
-	dedup_counts_csvs_control = GET_COUNTS_DEDUP_CONTROL(fixed_negative_control_dedup_full_bam_bai, params.counts_dedup, params.dedup_type, params.get_count_script)
-	// merges counts csvs per "dedup" across all samples.
-	merged_dedup_counts = CONCAT_COUNTS_DEDUP(dedup_counts_csvs.collect(), params.dedup_type)
+	//////////////////////////// analysis ////////////////////////////
 
-	// get counts csvs of # of softclipped reads per "dedup" class and per sample name.
-	dedup_softclipped_counts_csvs = GET_SOFTCLIPPED_COUNTS_DEDUP(fixed_dedup_sorted_full_bams_bais,\
-	params.counts_dedup_softclipped, params.dedup_softclipped_type, params.get_softclip_count_script)
-
-	dedup_softclipped_counts_csvs_control = GET_COUNTS_SOFTCLIPPED_CONTROL(fixed_negative_control_dedup_full_bam_bai,\
-	params.counts_dedup_softclipped, params.dedup_softclipped_type, params.get_softclip_count_script)
-	// merges counts csvs of # of softclipped reads per "dedup" across all samples.
-	merged_softclipped_dedup_counts = CONCAT_SOFTCLIPPED_COUNTS_DEDUP(dedup_softclipped_counts_csvs.collect(), params.dedup_softclipped_type)
-
-	// get counts csvs per non-polyA class and per sample name.
-	nonpolyA_counts_csvs = GET_COUNTS_NONPOLYA(nonpolyA_sorted_full_bams_bais, params.counts_nonpolyA, params.nonpolyA_type, params.get_count_script)
-	nonpolyA_counts_csvs_control = GET_COUNTS_NONPOLYA_CONTROL(nonpolyA_sorted_full_bams_bais_control, params.counts_nonpolyA, params.nonpolyA_type, params.get_count_script)
-	// merges counts csvs per non-polyA across all samples.
-	merged_nonpolyA_counts = CONCAT_COUNTS_NONPOLYA(nonpolyA_counts_csvs.collect(), params.nonpolyA_type)
-
-	// get counts csvs per polyA class and per sample name.
-	polyA_counts_csvs = GET_COUNTS_POLYA(polyA_sorted_full_bams_bais_sample_only, params.counts_polyA, params.polyA_type, params.get_count_script)
-	polyA_counts_csvs_control = GET_COUNTS_POLYA_CONTROL(polyA_sorted_full_bams_bais_control, params.counts_polyA, params.polyA_type, params.get_count_script)
-	// merges counts csvs per polyA class across all samples.
-	merged_polyA_counts = CONCAT_COUNTS_POLYA(polyA_counts_csvs.collect(), params.polyA_type)
+	if (params.analysis == "yes"){
+		//////////////////////////// draw span distribution to compare raw vs dedup vs split ////////////////////////////
 	
-	// get counts csvs per polyA + terminal class and per sample name.
-	polyAT_counts_csvs = GET_COUNTS_POLYA_TERMINAL(polyA_terminal_sorted_full_bams_bais, params.counts_polyAT, params.polyAT_type, params.get_count_script)
-	polyAT_counts_csvs_control = GET_COUNTS_POLYA_T_CONTROL(polyA_terminal_sorted_full_control_bams_bais, params.counts_polyAT, params.polyAT_type, params.get_count_script)
-	// merges counts csvs per polyA + terminal class across all samples.
-	merged_polyAT_counts = CONCAT_COUNTS_POLYA_TERMINAL(polyAT_counts_csvs.collect(), params.polyAT_type)
-	
-	// get counts csvs per annotated class and per sample name.
-	annotated_counts_csvs = GET_COUNTS_ANNOTATED(isolated_below_full_bams_bais, params.counts_annotated, params.annotated_type, params.get_count_script)
-	annotated_counts_csvs_control = GET_COUNTS_ANNOTATED_CONTROL(isolated_below_full_bams_bais_control, params.counts_annotated, params.annotated_type, params.get_count_script)
-	// merges counts csvs per annotated class across all samples.
-	merged_annotated_counts = CONCAT_COUNTS_ANNOTATED(annotated_counts_csvs.collect(), params.annotated_type)
+		// raw span distribution of samples and control.
+		raw_spans_samples = GET_SPAN_RAW_SAMPLE(possorted_bams_bais, "raw", "sample", params.span_script)
+		raw_spans_control = GET_SPAN_RAW_CONTROL(raw_negative_control_sorted_bams_bais, "raw", "control", params.span_script)
+		raw_spans = raw_spans_samples.mix(raw_spans_control)
 
-	// get counts csvs per unannotated class and per sample name.
-	unannotated_counts_csvs = GET_COUNTS_UNANNOTATED(isolated_above_full_bams_bais, params.counts_unannotated, params.unannotated_type, params.get_count_script)
-	unannotated_counts_csvs_control = GET_COUNTS_UNANNOTATED_CONTROL(isolated_above_full_bams_bais_control, params.counts_unannotated, params.unannotated_type, params.get_count_script)
-	// merges counts csvs per unannotated class across all samples.
-	merged_unannotated_counts = CONCAT_COUNTS_UNANNOTATED(unannotated_counts_csvs.collect(), params.unannotated_type)
+		// span distribution after deduplication of samples and control.
+		dedup_spans_samples = GET_SPAN_DEDUP_SAMPLE(sorted_dedup_bams_bais, "dedup", "sample", params.span_script)
+		dedup_spans_control = GET_SPAN_DEDUP_CONTROL(dedup_negative_control_sorted_bams_bais, "dedup", "control", params.span_script)
+		dedup_spans = dedup_spans_samples.mix(dedup_spans_control)
+		
+		// span after "split" step in samples.
+		// This is only available for samples (not control).
+		split_spans = GET_SPAN_SPLIT(splitted_sorted_bams_bais, "split", params.span_script)
 
-	// get counts csvs per intronic class and per sample name.
-	intronic_counts_csvs = GET_COUNTS_INTRONIC(intronic_sorted_full_bams_bais, params.counts_intronic, params.intronic_type, params.get_count_script)
-	intronic_counts_csvs_control = GET_COUNTS_INTRONIC_CONTROL(intronic_sorted_full_bams_bais_control, params.counts_intronic, params.intronic_type, params.get_count_script)
-	// merges counts csvs per intronic class across all samples.
-	merged_intronic_counts = CONCAT_COUNTS_INTRONIC(intronic_counts_csvs.collect(), params.intronic_type)
-	
-	// get counts csvs per intergenic class and per sample name.
-	intergenic_counts_csvs = GET_COUNTS_INTERGENIC(intergenic_sorted_full_bams_bais, params.counts_intergenic, params.intergenic_type, params.get_count_script)
-	intergenic_counts_csvs_control = GET_COUNTS_INTERGENIC_CONTROL(intergenic_sorted_full_bams_bais_control, params.counts_intergenic, params.intergenic_type, params.get_count_script)
-	// merges counts csvs per intergenic class across all samples.
-	merged_intergenic_counts = CONCAT_COUNTS_INTERGENIC(intergenic_counts_csvs.collect(), params.intergenic_type)
-	
-	// get counts csvs per exonic class and per sample name.
-	exonic_counts_csvs = GET_COUNTS_EXONIC(polyA_exonic_sorted_full_bams_bais, params.counts_exonic, params.exonic_type, params.get_count_script)
-	exonic_counts_csvs_control = GET_COUNTS_EXONIC_CONTROL(polyA_exonic_sorted_full_bams_bais_control, params.counts_exonic, params.exonic_type, params.get_count_script)
-	// merges counts csvs per exonic class across all samples.
-	merged_exonic_counts = CONCAT_COUNTS_EXONIC(exonic_counts_csvs.collect(), params.exonic_type)
+		raw_span_merged = CONCAT_SPAN_RAW(raw_spans.groupTuple(by: 1, sort: true, size: num_chrom), params.raw_span)
+		dedup_span_merged = CONCAT_SPAN_DEDUP(dedup_spans.groupTuple(by: 1, sort: true, size: num_chrom), params.dedup_span)
+		split_span_merged = CONCAT_SPAN_SPLIT(split_spans.groupTuple(by: 1, sort: true, size: num_chrom), params.split_span)
 
-	// merges counts csvs across all classes and across all samples
-	// total_counts_csv = MERGE_ALL_COUNTS_SAMPLE(merged_raw_counts, merged_dedup_counts, merged_softclipped_dedup_counts, merged_nonpolyA_counts,\
-	// merged_polyA_counts, merged_polyAT_counts, merged_intronic_counts, merged_intergenic_counts, merged_exonic_counts, "total_merged_sample")
+		raw_span_hist = GET_SPAN_HIST_RAW(raw_span_merged, params.span_histogram_script, params.raw_span_hist)
+		dedup_span_hist = GET_SPAN_HIST_DEDUP(dedup_span_merged, params.span_histogram_script, params.dedup_span_hist)
+		split_span_hist = GET_SPAN_HIST_SPLIT(split_span_merged, params.span_histogram_script, params.split_span_hist)
+		
+		further_filtered_terminal_exons = FILTER_FURTHER_TERMINAL_EXONS(terminal_exons_bed, params.filter_terminal_exons_script)
 
-	total_counts_csv = MERGE_ALL_COUNTS_SAMPLE(merged_raw_counts, merged_dedup_counts, merged_softclipped_dedup_counts, merged_nonpolyA_counts,\
-	merged_polyA_counts, merged_polyAT_counts, merged_annotated_counts, merged_unannotated_counts, merged_intronic_counts, merged_intergenic_counts, merged_exonic_counts, "total_merged_sample")
+		//////////////////////////// get_A_freq_in_nonsoftclipped_reads ////////////////////////////
+		// get reads that do not have soft-clipped regions.
+		no_softclip_full_bams = GET_NON_SOFTCLIP(fixed_dedup_sorted_full_bams_bais, params.get_no_softclipped_script)
+		no_softclip_sorted_full_bams_bais = SORT_NO_SOFTCLIP(no_softclip_full_bams)
 
-	total_counts_csv_control = MERGE_ALL_COUNTS_CONTROL(raw_counts_csvs_control, dedup_counts_csvs_control, dedup_softclipped_counts_csvs_control, nonpolyA_counts_csvs_control, polyA_counts_csvs_control,\
-	polyAT_counts_csvs_control, annotated_counts_csvs_control, unannotated_counts_csvs_control, intronic_counts_csvs_control, intergenic_counts_csvs_control, exonic_counts_csvs_control, "total_merged_control")
-	
-	// split counts csv by sample
-	split_by_samples_counts_csvs_collected = SPLIT_PER_SAMPLE(total_counts_csv, params.get_count_split_script)
+		// get frequency of "A" nucleotide appearing by chance (per each sample). it should be <= 0.3
+		// if this "A" frequency <= 0.3, softclipped length >= 5 is useable as polyA reads. (probability of happening by chance is reasonably low)
+		avg_A_freq_csvs = GET_A_FREQ_IN_NONSOFTCLIP(no_softclip_sorted_full_bams_bais, params.get_avg_a_freq_script)
 
-	split_by_samples_counts_csvs = ONE_BY_ONE(split_by_samples_counts_csvs_collected)
-	
-	// make tuple of file path and sample name
-	counts_and_samples = split_by_samples_counts_csvs.map { file -> [file, file.baseName] }
+		////////////////////////////  num_reads_per_class ////////////////////////////
 
-	// make counts bar chart
-	// use combine so that you use negative control as many times as the number of samples.
-	barcharts = GET_BAR_CHART(counts_and_samples.combine(total_counts_csv_control), params.get_barchart_script)
-	
-	// distance
+		// get counts csvs per "raw" class and per sample name.
+		raw_counts_csvs = GET_COUNTS_RAW(full_data_tuple, params.counts_raw, params.raw_type, params.get_count_script)
+		raw_counts_csvs_control = GET_COUNTS_RAW_CONTROL(negative_control_data_raw_tuple, params.counts_raw, params.raw_type, params.get_count_script)
+		// merges counts csvs per "raw" class across all samples.
+		merged_raw_counts = CONCAT_COUNTS_RAW(raw_counts_csvs.collect(), params.raw_type)
+		
+		// get counts csvs per "dedup" class and per sample name.
+		dedup_counts_csvs = GET_COUNTS_DEDUP(fixed_dedup_sorted_full_bams_bais, params.counts_dedup, params.dedup_type, params.get_count_script)
+		dedup_counts_csvs_control = GET_COUNTS_DEDUP_CONTROL(fixed_negative_control_dedup_full_bam_bai, params.counts_dedup, params.dedup_type, params.get_count_script)
+		// merges counts csvs per "dedup" across all samples.
+		merged_dedup_counts = CONCAT_COUNTS_DEDUP(dedup_counts_csvs.collect(), params.dedup_type)
 
-	// get distance distribution between end of terminal exon and representative cleavage site of a pA cluster in the sample.
-	distance_outputs_alter_tuple = GET_DISTANCE_ALTER_SAMPLE(polyA_TE_further_filtered_clustered_beds_tuple,\
-	further_filtered_terminal_exons, params.get_distance_final_script)
+		// get counts csvs of # of softclipped reads per "dedup" class and per sample name.
+		dedup_softclipped_counts_csvs = GET_SOFTCLIPPED_COUNTS_DEDUP(fixed_dedup_sorted_full_bams_bais,\
+		params.counts_dedup_softclipped, params.dedup_softclipped_type, params.get_softclip_count_script)
 
-	// get distance distribution between end of terminal exon and representative cleavage site of a pA cluster in the control.
-	distance_outputs_alter_control_tuple = GET_DISTANCE_ALTER_CONTROL(dedup_clustered_bed_control_tuple,\
-	further_filtered_terminal_exons, params.get_distance_final_script)
-	
-	distance_outputs_alter_control = UNCOUPLE_CSV_WITH_SAMPLE(distance_outputs_alter_control_tuple)
-	
-	//distance histogram (before and after fixing cleavage site)
-	distance_histograms_alter = GET_D_HISTOGRAM_ALTER(distance_outputs_alter_tuple.combine(distance_outputs_alter_control), params.get_histogram_final_script)
+		dedup_softclipped_counts_csvs_control = GET_COUNTS_SOFTCLIPPED_CONTROL(fixed_negative_control_dedup_full_bam_bai,\
+		params.counts_dedup_softclipped, params.dedup_softclipped_type, params.get_softclip_count_script)
+		// merges counts csvs of # of softclipped reads per "dedup" across all samples.
+		merged_softclipped_dedup_counts = CONCAT_SOFTCLIPPED_COUNTS_DEDUP(dedup_softclipped_counts_csvs.collect(), params.dedup_softclipped_type)
 
-	// ATGC_plot
+		// get counts csvs per non-polyA class and per sample name.
+		nonpolyA_counts_csvs = GET_COUNTS_NONPOLYA(nonpolyA_sorted_full_bams_bais, params.counts_nonpolyA, params.nonpolyA_type, params.get_count_script)
+		nonpolyA_counts_csvs_control = GET_COUNTS_NONPOLYA_CONTROL(nonpolyA_sorted_full_bams_bais_control, params.counts_nonpolyA, params.nonpolyA_type, params.get_count_script)
+		// merges counts csvs per non-polyA across all samples.
+		merged_nonpolyA_counts = CONCAT_COUNTS_NONPOLYA(nonpolyA_counts_csvs.collect(), params.nonpolyA_type)
 
-	// plot frequency plot in each class
-	all_polyA_atgc_plts = PLOT_ATGC_ALL_POLYA(polyA_clustered_beds_sample_tuple, params.all_polyA_ATGC_out, params.plot_frequencies_script)
+		// get counts csvs per polyA class and per sample name.
+		polyA_counts_csvs = GET_COUNTS_POLYA(polyA_sorted_full_bams_bais_sample_only, params.counts_polyA, params.polyA_type, params.get_count_script)
+		polyA_counts_csvs_control = GET_COUNTS_POLYA_CONTROL(polyA_sorted_full_bams_bais_control, params.counts_polyA, params.polyA_type, params.get_count_script)
+		// merges counts csvs per polyA class across all samples.
+		merged_polyA_counts = CONCAT_COUNTS_POLYA(polyA_counts_csvs.collect(), params.polyA_type)
+		
+		// get counts csvs per polyA + terminal class and per sample name.
+		polyAT_counts_csvs = GET_COUNTS_POLYA_TERMINAL(polyA_terminal_sorted_full_bams_bais, params.counts_polyAT, params.polyAT_type, params.get_count_script)
+		polyAT_counts_csvs_control = GET_COUNTS_POLYA_T_CONTROL(polyA_terminal_sorted_full_control_bams_bais, params.counts_polyAT, params.polyAT_type, params.get_count_script)
+		// merges counts csvs per polyA + terminal class across all samples.
+		merged_polyAT_counts = CONCAT_COUNTS_POLYA_TERMINAL(polyAT_counts_csvs.collect(), params.polyAT_type)
+		
+		// get counts csvs per annotated class and per sample name.
+		annotated_counts_csvs = GET_COUNTS_ANNOTATED(isolated_below_full_bams_bais, params.counts_annotated, params.annotated_type, params.get_count_script)
+		annotated_counts_csvs_control = GET_COUNTS_ANNOTATED_CONTROL(isolated_below_full_bams_bais_control, params.counts_annotated, params.annotated_type, params.get_count_script)
+		// merges counts csvs per annotated class across all samples.
+		merged_annotated_counts = CONCAT_COUNTS_ANNOTATED(annotated_counts_csvs.collect(), params.annotated_type)
 
-	above_atgc_plts = PLOT_ATGC_ABOVE(polyA_TE_above_beds_tuple, params.unannotated_ATGC_out, params.plot_frequencies_script)
+		// get counts csvs per unannotated class and per sample name.
+		unannotated_counts_csvs = GET_COUNTS_UNANNOTATED(isolated_above_full_bams_bais, params.counts_unannotated, params.unannotated_type, params.get_count_script)
+		unannotated_counts_csvs_control = GET_COUNTS_UNANNOTATED_CONTROL(isolated_above_full_bams_bais_control, params.counts_unannotated, params.unannotated_type, params.get_count_script)
+		// merges counts csvs per unannotated class across all samples.
+		merged_unannotated_counts = CONCAT_COUNTS_UNANNOTATED(unannotated_counts_csvs.collect(), params.unannotated_type)
 
-	below_atgc_plts = PLOT_ATGC_BELOW(polyA_TE_below_beds_tuple, params.annotated_ATGC_out, params.plot_frequencies_script)
+		// get counts csvs per intronic class and per sample name.
+		intronic_counts_csvs = GET_COUNTS_INTRONIC(intronic_sorted_full_bams_bais, params.counts_intronic, params.intronic_type, params.get_count_script)
+		intronic_counts_csvs_control = GET_COUNTS_INTRONIC_CONTROL(intronic_sorted_full_bams_bais_control, params.counts_intronic, params.intronic_type, params.get_count_script)
+		// merges counts csvs per intronic class across all samples.
+		merged_intronic_counts = CONCAT_COUNTS_INTRONIC(intronic_counts_csvs.collect(), params.intronic_type)
+		
+		// get counts csvs per intergenic class and per sample name.
+		intergenic_counts_csvs = GET_COUNTS_INTERGENIC(intergenic_sorted_full_bams_bais, params.counts_intergenic, params.intergenic_type, params.get_count_script)
+		intergenic_counts_csvs_control = GET_COUNTS_INTERGENIC_CONTROL(intergenic_sorted_full_bams_bais_control, params.counts_intergenic, params.intergenic_type, params.get_count_script)
+		// merges counts csvs per intergenic class across all samples.
+		merged_intergenic_counts = CONCAT_COUNTS_INTERGENIC(intergenic_counts_csvs.collect(), params.intergenic_type)
+		
+		// get counts csvs per exonic class and per sample name.
+		exonic_counts_csvs = GET_COUNTS_EXONIC(polyA_exonic_sorted_full_bams_bais, params.counts_exonic, params.exonic_type, params.get_count_script)
+		exonic_counts_csvs_control = GET_COUNTS_EXONIC_CONTROL(polyA_exonic_sorted_full_bams_bais_control, params.counts_exonic, params.exonic_type, params.get_count_script)
+		// merges counts csvs per exonic class across all samples.
+		merged_exonic_counts = CONCAT_COUNTS_EXONIC(exonic_counts_csvs.collect(), params.exonic_type)
 
-	nonpolyA_atgc_plts = PLOT_ATGC_NONPOLYA(non_polyA_clustered_beds_sample_tuple, params.non_polyA_ATGC_out, params.plot_frequencies_script)
+		// merges counts csvs across all classes and across all samples
+		// total_counts_csv = MERGE_ALL_COUNTS_SAMPLE(merged_raw_counts, merged_dedup_counts, merged_softclipped_dedup_counts, merged_nonpolyA_counts,\
+		// merged_polyA_counts, merged_polyAT_counts, merged_intronic_counts, merged_intergenic_counts, merged_exonic_counts, "total_merged_sample")
 
-	intergenic_atgc_plts = PLOT_ATGC_INTERGENIC(polyA_intergenic_clustered_beds_tuple, params.intergenic_ATGC_out, params.plot_frequencies_script)
+		total_counts_csv = MERGE_ALL_COUNTS_SAMPLE(merged_raw_counts, merged_dedup_counts, merged_softclipped_dedup_counts, merged_nonpolyA_counts,\
+		merged_polyA_counts, merged_polyAT_counts, merged_annotated_counts, merged_unannotated_counts, merged_intronic_counts, merged_intergenic_counts, merged_exonic_counts, "total_merged_sample")
 
-	intronic_atgc_plts = PLOT_ATGC_INTRONIC(polyA_intronic_clustered_beds_tuple, params.intronic_ATGC_out, params.plot_frequencies_script)
+		total_counts_csv_control = MERGE_ALL_COUNTS_CONTROL(raw_counts_csvs_control, dedup_counts_csvs_control, dedup_softclipped_counts_csvs_control, nonpolyA_counts_csvs_control, polyA_counts_csvs_control,\
+		polyAT_counts_csvs_control, annotated_counts_csvs_control, unannotated_counts_csvs_control, intronic_counts_csvs_control, intergenic_counts_csvs_control, exonic_counts_csvs_control, "total_merged_control")
+		
+		// split counts csv by sample
+		split_by_samples_counts_csvs_collected = SPLIT_PER_SAMPLE(total_counts_csv, params.get_count_split_script)
 
-	exonic_atgc_plt = PLOT_ATGC_EXONIC(polyA_exonic_clustered_beds_tuple, params.polyA_exonic_ATGC_out, params.plot_frequencies_script)
+		split_by_samples_counts_csvs = ONE_BY_ONE(split_by_samples_counts_csvs_collected)
+		
+		// make tuple of file path and sample name
+		counts_and_samples = split_by_samples_counts_csvs.map { file -> [file, file.baseName] }
 
-	control_atgc_plt = PLOT_ATGC_CONTROL(dedup_clustered_bed_control_tuple, params.control_ATGC_out, params.plot_frequencies_script)
+		// make counts bar chart
+		// use combine so that you use negative control as many times as the number of samples.
+		(count_barcharts_png, count_barcharts_svg) = GET_BAR_CHART(counts_and_samples.combine(total_counts_csv_control), params.get_barchart_script)
 
-	// motif_freq_plot
+		//////////////////////////// distance ////////////////////////////
 
-	// draw 12 motives frequency plots based on gtf file
-	(gtf_motif_graphs, gtf_motif_graphs_overlaid, gtf_motif_order, gtf_peaks) = GET_MOTIF_FREQ_GTF_PLOT(further_filtered_terminal_exons, params.motif_search_out_gtf, params.gtf_search_motif_script)
-	
-	// draw 12 motives frequency plots from our data in each class in each sample
-	(annotated_motif_graphs, annotated_motif_graphs_overlaid, annotated_motif_orders, annotated_motif_scores) = GET_MOTIF_FREQ_PLOT_BELOW(polyA_TE_below_beds_tuple,\
-	params.motif_search_out_template_annotated, params.below_annotated, gtf_peaks, params.search_motif_script)
+		// for distance distribution and avg distance (type1 vs type2)
+		polyA_TE_further_filtered_clustered_beds_tuple = TE_FURTHER_INTERSECT_TUPLE(polyA_TE_clustered_beds_tuple, further_filtered_terminal_exons, params.filtered_te_template)
+		
+		// get distance distribution between end of terminal exon and representative cleavage site of a pA cluster in the sample.
+		distance_outputs_alter_tuple = GET_DISTANCE_ALTER_SAMPLE(polyA_TE_further_filtered_clustered_beds_tuple,\
+		further_filtered_terminal_exons, params.get_distance_final_script)
 
-	(unannotated_motif_graphs, unannotated_motif_graphs_overlaid, unannotated_motif_orders, unannotated_motif_scores) = GET_MOTIF_FREQ_PLOT_ABOVE(polyA_TE_above_beds_tuple,\
-	params.motif_search_out_template_unannotated, params.above_annotated, gtf_peaks, params.search_motif_script)
+		// get distance distribution between end of terminal exon and representative cleavage site of a pA cluster in the control.
+		distance_outputs_alter_control_tuple = GET_DISTANCE_ALTER_CONTROL(dedup_clustered_bed_control_tuple,\
+		further_filtered_terminal_exons, params.get_distance_final_script)
+		
+		distance_outputs_alter_control = UNCOUPLE_CSV_WITH_SAMPLE(distance_outputs_alter_control_tuple)
+		
+		//distance histogram (before and after fixing cleavage site)
+		(distance_histograms_alter_png, distance_histograms_alter_svg) = GET_D_HISTOGRAM_ALTER(distance_outputs_alter_tuple.combine(distance_outputs_alter_control), params.get_histogram_final_script)
 
-	(intergenic_motif_graphs, intergenic_motif_graphs_overlaid, intergenic_motif_orders, intergenic_motif_scores) = GET_MOTIF_FREQ_PLOT_INTERGENIC(polyA_intergenic_clustered_beds_tuple,\
-	params.motif_search_out_template_intergenic, params.intergenic_annotated, gtf_peaks, params.search_motif_script)	
+		//////////////////////////// ATGC_plot ////////////////////////////
 
-	(intronic_motif_graphs, intronic_motif_graphs_overlaid, intronic_motif_orders, intronic_motif_scores) = GET_MOTIF_FREQ_PLOT_INTRONIC(polyA_intronic_clustered_beds_tuple,\
-	params.motif_search_out_template_intronic, params.intronic_annotated, gtf_peaks, params.search_motif_script)	
+		// plot frequency plot in each class
+		all_polyA_atgc_plts = PLOT_ATGC_ALL_POLYA(polyA_clustered_beds_sample_tuple, params.all_polyA_ATGC_out, params.plot_frequencies_script)
 
-	(exonic_motif_graphs, exonic_motif_graphs_overlaid, exonic_motif_orders, exonic_motif_scores) = GET_MOTIF_FREQ_PLOT_EXONIC(polyA_exonic_clustered_beds_tuple,\
-	params.motif_search_out_template_exonic, params.polyA_exonic_annotated, gtf_peaks, params.search_motif_script)
+		above_atgc_plts = PLOT_ATGC_ABOVE(polyA_TE_above_beds_tuple, params.unannotated_ATGC_out, params.plot_frequencies_script)
 
-	// save motif scores/orders (min:0, max:12) in each class and in each sample
-	(merged_annotated_motif_orders, merged_annotated_motif_scores) = CONCAT_MOTIF_ORDERS_ANNOTATED(annotated_motif_orders.collect(), annotated_motif_scores.collect(), params.motif_search_out_template_annotated)
+		below_atgc_plts = PLOT_ATGC_BELOW(polyA_TE_below_beds_tuple, params.annotated_ATGC_out, params.plot_frequencies_script)
 
-	(merged_unannotated_motif_orders, merged_unannotated_motif_scores)  = CONCAT_MOTIF_ORDERS_UNANNOTATED(unannotated_motif_orders.collect(), unannotated_motif_scores.collect(), params.motif_search_out_template_unannotated)
-	
-	(merged_intergenic_motif_orders, merged_intergenic_motif_scores) = CONCAT_MOTIF_ORDERS_INTERGENIC(intergenic_motif_orders.collect(), intergenic_motif_scores.collect(), params.motif_search_out_template_intergenic)
-	
-	(merged_intronic_motif_orders, merged_intronic_motif_scores) = CONCAT_MOTIF_ORDERS_INTRONIC(intronic_motif_orders.collect(), intronic_motif_scores.collect(), params.motif_search_out_template_intronic)
-	
-	(merged_exonic_motif_orders, merged_exonic_motif_scores) = CONCAT_MOTIF_ORDERS_EXONIC(exonic_motif_orders.collect(), exonic_motif_scores.collect(), params.motif_search_out_template_exonic)
+		nonpolyA_atgc_plts = PLOT_ATGC_NONPOLYA(non_polyA_clustered_beds_sample_tuple, params.non_polyA_ATGC_out, params.plot_frequencies_script)
 
-	// merge motif scores/orders across all samples
-	total_motif_orders_csv = MERGE_ALL_MOTIF_ORDERS(merged_annotated_motif_orders, merged_unannotated_motif_orders, merged_intergenic_motif_orders, merged_intronic_motif_orders, merged_exonic_motif_orders, params.total_merged_motif_orders)
-	total_motif_scores_csv = MERGE_ALL_MOTIF_SCORES(merged_annotated_motif_scores, merged_unannotated_motif_scores, merged_intergenic_motif_scores, merged_intronic_motif_scores, merged_exonic_motif_scores, params.total_merged_motif_scores)
+		intergenic_atgc_plts = PLOT_ATGC_INTERGENIC(polyA_intergenic_clustered_beds_tuple, params.intergenic_ATGC_out, params.plot_frequencies_script)
 
-	// split motif orders by each sample. Each sample has motif orders for annotated, unannotated, intronic, intergenic, exonic.
-	split_by_samples_motif_orders_csv_collected = SPLIT_MOTIF_ORDER_PER_SAMPLE(total_motif_orders_csv, params.split_motif_order_script)
-	split_by_samples_motif_orders_csv = MOTIF_ORDERS_ONE_BY_ONE(split_by_samples_motif_orders_csv_collected)
-	
-	// make tuple of file path and sample name
-	motif_orders_and_samples = split_by_samples_motif_orders_csv.map { file -> [file, file.baseName] }
+		intronic_atgc_plts = PLOT_ATGC_INTRONIC(polyA_intronic_clustered_beds_tuple, params.intronic_ATGC_out, params.plot_frequencies_script)
 
-	// combine motif orders of 1 sample + motif order of gtf. Each sample has motif orders for annotated, unannotated, intronic, intergenic, exonic and gtf.
-	combined_motif_order = COMBINE_MOTIF_ORDERS(motif_orders_and_samples, gtf_motif_order, params.motif_order_outname)
-	
-	//////////////////////////////////////old version///////////////////////////////////////////////
-	// split polyA by chromosome (negative control also included). This is for efficient computing in process "COMPUTE_SCORES_FOR_MOTIF_ALTER"
-	// The mix operator combines the items emitted by two (or more) channels into a single channel.
-	// for negative control, non-polyA reads are used. This is because we want to compare out pipeline to really a negative control.
-	// polyA_with_negative_control_sorted_bams_bais = SPLIT_POLYA_WITH_NEGCONTROL\
-	// (polyA_sorted_full_bams_bais_sample_only.mix(nonpolyA_sorted_full_bams_bais_control).combine(chromosomes), params.polyA_with_control_template)
-	// polyA_with_negative_control_sorted_bams_bais.view()
-	// polyA_with_negative_control_sorted_bams_bais.groupTuple(by: 2, sort: true, size: 21).view()
-	// compute motif scores (min:0, max:12) at the pulled polyA reads level per each sample.
-	// groupTuple allows to group file paths by samples.
-	// by: 2 means group by 3rd element of the tuple (i.e. samples) (0-based index)
-	// channel looks like: [[bam1~bamY], [bai1~baiY], sample_name]
+		exonic_atgc_plt = PLOT_ATGC_EXONIC(polyA_exonic_clustered_beds_tuple, params.polyA_exonic_ATGC_out, params.plot_frequencies_script)
 
-	// all_polyA_sorted_bams_bais_sample_only.groupTuple(by: 2, sort: true, size: num_chrom)
-	// sorted_bams_bais are tuple (bams, bais, samples). you need to group the "keys" by samples. hence it should be by: 2 (0-based indexing)
-	// data structure: [[bam1~bamY], [bai1~baiY], sample_name]
-	//////////////////////////////////////old version///////////////////////////////////////////////
-	
-	// compute motif scores (min:0, max:12) at the pulled polyA reads level per each sample.
-	(polyA_motif_graphs, polyA_motif_graphs_overlaid, polyA_scores_csv) = COMPUTE_SCORES_FOR_MOTIF_ALTER(polyA_clustered_beds_sample_tuple.mix(non_polyA_clustered_beds_control_tuple),\
-	params.motif_search_out_polyA, gtf_peaks, params.compute_motif_score_advanced_script)
+		control_atgc_plt = PLOT_ATGC_CONTROL(dedup_clustered_bed_control_tuple, params.control_ATGC_out, params.plot_frequencies_script)
 
-	// combine motif scores (min:0, max:12) at the pulled polyA reads level across all samples.
-	combined_motif_scores_polyA_level = COMBINE_SCORES_FOR_MOTIF(polyA_scores_csv.collect(), params.combined_motif_scores)
-	polyA_motif_scores = GET_BAR_CHART_SCORE_MOTIF_POLYA(combined_motif_scores_polyA_level, params.polyA_motif_score_script)
+		//////////////////////////// motif_freq_plot ////////////////////////////
 
-	// plot histogram of length of softclipped region (before and after fixation).
-	size_softclipped_dist = GET_SOFTCLIPPED_DISTRIBUTION(fixed_dedup_sorted_full_bams_bais, params.sizeSoftclipped_out, params.get_softclipped_script)
+		// draw 12 motives frequency plots based on gtf file
+		(gtf_motif_graphs, gtf_motif_graphs_overlaid_png, gtf_motif_graphs_overlaid_svg, gtf_motif_order, gtf_peaks) = GET_MOTIF_FREQ_GTF_PLOT(further_filtered_terminal_exons, params.motif_search_out_gtf, params.gtf_search_motif_script)
+		
+		// draw 12 motives frequency plots from our data in each class in each sample
+		(annotated_motif_graphs, annotated_motif_graphs_overlaid_png, annotated_motif_graphs_overlaid_svg, annotated_motif_orders, annotated_motif_scores) = GET_MOTIF_FREQ_PLOT_BELOW(polyA_TE_below_beds_tuple,\
+		params.motif_search_out_template_annotated, params.below_annotated, gtf_peaks, params.search_motif_script)
 
-	// num_polyA (number of polyA sites identified)
-	
-	// get number of polyA sites in each sample (using all polyA reads). + get the number of polyA sites/gene distribution in each sample.
-	num_polyA_csvs = GET_NUM_POLYA_SITES_ALLPOLYA(polyA_clustered_beds_sample_tuple,\
-	params.allPAS_num_polyA_csv, params.all_polyA_annotated, params.get_numA_polyA_script)
+		(unannotated_motif_graphs, unannotated_motif_graphs_overlaid_png, unannotated_motif_graphs_overlaid_svg, unannotated_motif_orders, unannotated_motif_scores) = GET_MOTIF_FREQ_PLOT_ABOVE(polyA_TE_above_beds_tuple,\
+		params.motif_search_out_template_unannotated, params.above_annotated, gtf_peaks, params.search_motif_script)
 
-	// get number of polyA sites in each sample and in each class. + get the number of polyA sites/gene distribution in each sample. (for isolated above/below reads that have GX tag rest are dummy figures) 
-	above_num_polyA_csvs = GET_NUM_POLYA_SITES_ABOVE(polyA_TE_above_beds_tuple,\
-	params.above_num_polyA_csv, params.above_annotated, params.get_numA_polyA_script)
+		(intergenic_motif_graphs, intergenic_motif_graphs_overlaid_png, intergenic_motif_graphs_overlaid_svg, intergenic_motif_orders, intergenic_motif_scores) = GET_MOTIF_FREQ_PLOT_INTERGENIC(polyA_intergenic_clustered_beds_tuple,\
+		params.motif_search_out_template_intergenic, params.intergenic_annotated, gtf_peaks, params.search_motif_script)	
 
-	above_combined_numPolyA_csv = COMBINE_NUM_POLYA_ABOVE(above_num_polyA_csvs.collect(), params.combined_above_num_polyA_csv)
+		(intronic_motif_graphs, intronic_motif_graphs_overlaid_png, intronic_motif_graphs_overlaid_svg, intronic_motif_orders, intronic_motif_scores) = GET_MOTIF_FREQ_PLOT_INTRONIC(polyA_intronic_clustered_beds_tuple,\
+		params.motif_search_out_template_intronic, params.intronic_annotated, gtf_peaks, params.search_motif_script)	
 
-	below_num_polyA_csvs = GET_NUM_POLYA_SITES_BELOW(polyA_TE_below_beds_tuple,\
-	params.below_num_polyA_csv, params.below_annotated, params.get_numA_polyA_script)
+		(exonic_motif_graphs, exonic_motif_graphs_overlaid_png, exonic_motif_graphs_overlaid_svg, exonic_motif_orders, exonic_motif_scores) = GET_MOTIF_FREQ_PLOT_EXONIC(polyA_exonic_clustered_beds_tuple,\
+		params.motif_search_out_template_exonic, params.polyA_exonic_annotated, gtf_peaks, params.search_motif_script)
 
-	below_combined_numPolyA_csv = COMBINE_NUM_POLYA_BELOW(below_num_polyA_csvs.collect(), params.combined_below_num_polyA_csv)
+		// save motif scores/orders (min:0, max:12) in each class and in each sample
+		(merged_annotated_motif_orders, merged_annotated_motif_scores) = CONCAT_MOTIF_ORDERS_ANNOTATED(annotated_motif_orders.collect(), annotated_motif_scores.collect(), params.motif_search_out_template_annotated)
 
-	intronic_num_polyA_csvs = GET_NUM_POLYA_SITES_INTRONIC(polyA_intronic_clustered_beds_tuple,\
-	params.intronic_num_polyA_csv, params.intronic_annotated, params.get_numA_polyA_script)
+		(merged_unannotated_motif_orders, merged_unannotated_motif_scores)  = CONCAT_MOTIF_ORDERS_UNANNOTATED(unannotated_motif_orders.collect(), unannotated_motif_scores.collect(), params.motif_search_out_template_unannotated)
+		
+		(merged_intergenic_motif_orders, merged_intergenic_motif_scores) = CONCAT_MOTIF_ORDERS_INTERGENIC(intergenic_motif_orders.collect(), intergenic_motif_scores.collect(), params.motif_search_out_template_intergenic)
+		
+		(merged_intronic_motif_orders, merged_intronic_motif_scores) = CONCAT_MOTIF_ORDERS_INTRONIC(intronic_motif_orders.collect(), intronic_motif_scores.collect(), params.motif_search_out_template_intronic)
+		
+		(merged_exonic_motif_orders, merged_exonic_motif_scores) = CONCAT_MOTIF_ORDERS_EXONIC(exonic_motif_orders.collect(), exonic_motif_scores.collect(), params.motif_search_out_template_exonic)
 
-	intronic_combined_numPolyA_csv = COMBINE_NUM_POLYA_INTRONIC(intronic_num_polyA_csvs.collect(), params.combined_intronic_num_polyA_csv)
+		// merge motif scores/orders across all samples
+		total_motif_orders_csv = MERGE_ALL_MOTIF_ORDERS(merged_annotated_motif_orders, merged_unannotated_motif_orders, merged_intergenic_motif_orders, merged_intronic_motif_orders, merged_exonic_motif_orders, params.total_merged_motif_orders)
+		total_motif_scores_csv = MERGE_ALL_MOTIF_SCORES(merged_annotated_motif_scores, merged_unannotated_motif_scores, merged_intergenic_motif_scores, merged_intronic_motif_scores, merged_exonic_motif_scores, params.total_merged_motif_scores)
 
-	intergenic_num_polyA_csvs = GET_NUM_POLYA_SITES_INTERGENIC(polyA_intergenic_clustered_beds_tuple,\
-	params.intergenic_num_polyA_csv, params.intergenic_annotated, params.get_numA_polyA_script)
+		// split motif orders by each sample. Each sample has motif orders for annotated, unannotated, intronic, intergenic, exonic.
+		split_by_samples_motif_orders_csv_collected = SPLIT_MOTIF_ORDER_PER_SAMPLE(total_motif_orders_csv, params.split_motif_order_script)
+		split_by_samples_motif_orders_csv = MOTIF_ORDERS_ONE_BY_ONE(split_by_samples_motif_orders_csv_collected)
+		
+		// make tuple of file path and sample name
+		motif_orders_and_samples = split_by_samples_motif_orders_csv.map { file -> [file, file.baseName] }
 
-	intergenic_combined_numPolyA_csv = COMBINE_NUM_POLYA_INTERGENIC(intergenic_num_polyA_csvs.collect(), params.combined_intergenic_num_polyA_csv)
+		// combine motif orders of 1 sample + motif order of gtf. Each sample has motif orders for annotated, unannotated, intronic, intergenic, exonic and gtf.
+		combined_motif_order = COMBINE_MOTIF_ORDERS(motif_orders_and_samples, gtf_motif_order, params.motif_order_outname)
 
-	exonic_num_polyA_csvs = GET_NUM_POLYA_SITES_EXONIC(polyA_exonic_clustered_beds_tuple,\
-	params.exonic_num_polyA_csv, params.polyA_exonic_annotated, params.get_numA_polyA_script)
+		// compute motif scores (min:0, max:12) at the pulled polyA reads level per each sample.
+		(polyA_motif_graphs, polyA_motif_graphs_overlaid_png, polyA_motif_graphs_overlaid_svg, polyA_scores_csv) = COMPUTE_SCORES_FOR_MOTIF_ALTER(polyA_clustered_beds_sample_tuple.mix(non_polyA_clustered_beds_control_tuple),\
+		params.motif_search_out_polyA, gtf_peaks, params.compute_motif_score_advanced_script)
 
-	exonic_combined_numPolyA_csv = COMBINE_NUM_POLYA_EXONIC(exonic_num_polyA_csvs.collect(), params.combined_exonic_num_polyA_csv)
+		// combine motif scores (min:0, max:12) at the pulled polyA reads level across all samples.
+		combined_motif_scores_polyA_level = COMBINE_SCORES_FOR_MOTIF(polyA_scores_csv.collect(), params.combined_motif_scores)
+		(polyA_motif_scores_png, polyA_motif_scores_svg) = GET_BAR_CHART_SCORE_MOTIF_POLYA(combined_motif_scores_polyA_level, params.polyA_motif_score_script)
 
-	control_num_polyA_csvs = GET_NUM_POLYA_SITES_CONTROL(polyA_clustered_bed_control_tuple,\
-	params.control_num_polyA_csv, params.control_annotated, params.get_numA_polyA_script)
+		// plot histogram of length of softclipped region (before and after fixation).
+		(size_softclipped_dist_png, size_softclipped_dist_svg, percentage_csv) = GET_SOFTCLIPPED_DISTRIBUTION(fixed_dedup_sorted_full_bams_bais, params.sizeSoftclipped_out, params.get_softclipped_script)
 
-	control_combined_numPolyA_csv = COMBINE_NUM_POLYA_CONTROL(control_num_polyA_csvs.collect(), params.combined_control_num_polyA_csv)
+		//////////////////////////// num_polyA (number of polyA sites identified) ////////////////////////////
+		
+		// get number of polyA sites in each sample (using all polyA reads). + get the number of polyA sites/gene distribution in each sample.
+		num_polyA_csvs = GET_NUM_POLYA_SITES_ALLPOLYA(polyA_clustered_beds_sample_tuple,\
+		params.allPAS_num_polyA_csv, params.all_polyA_annotated, params.get_numA_polyA_script)
 
-	// combine all csvs containing number of pA sites (at all polyA reads) from each sample into a single csv file.
-	combined_numPolyA_csv = COMBINE_NUM_POLYA_ALL_PAS(num_polyA_csvs.mix(control_combined_numPolyA_csv).collect(), params.combined_all_PAS_num_polyA_csv)
-	// plot a barchart of number of polyA sites for all samples (using all polyA reads).
-	num_polyA_barchart = GET_BAR_CHART_NUM_POLYA(combined_numPolyA_csv, params.num_polyA_barchart, params.get_barchart_numpolyA_script)
-	
-	// merge all number of polyA sites from different sample and different class into a single csv file.
-	all_combined_numPolyA_csv = MERGE_ALL_NUM_PAS_CSVS(above_combined_numPolyA_csv, below_combined_numPolyA_csv,\
-	intronic_combined_numPolyA_csv, intergenic_combined_numPolyA_csv, exonic_combined_numPolyA_csv, control_combined_numPolyA_csv, params.all_combined_num_polyA_csv)
-	
-	// combine total motif score csv file, total number of polyA sites csv file and total number of genes csv file together and make a barchart.
-	motif_score_and_numPAS_csv = FUSE_MOTIF_SCORE_NUM_PAS(total_motif_scores_csv, combined_motif_scores_polyA_level, all_combined_numPolyA_csv, params.numPAS_motifScore_csv, params.fuse_numPAS_motifscore_script)
-	
-	// gene_coverage (number of genes covered by each sample)
+		// get number of polyA sites in each sample and in each class. + get the number of polyA sites/gene distribution in each sample. (for isolated above/below reads that have GX tag rest are dummy figures) 
+		above_num_polyA_csvs = GET_NUM_POLYA_SITES_ABOVE(polyA_TE_above_beds_tuple,\
+		params.above_num_polyA_csv, params.above_annotated, params.get_numA_polyA_script)
 
-	// compute number of genes expressed by each sample and save it in each csv file. (includes negative control)
-	dedup_gene_coverage_csvs = GET_GENE_COVERAGE_DEDUP(fixed_dedup_sorted_full_bams_bais.mix(fixed_negative_control_dedup_full_bam_bai), params.dedup_gene_coverage_csv, terminal_exons_bed, "dedup", params.gene_coverage_script)
-	// compute number of genes covered by each sample and save it in each csv file. (includes negative control)
-	polyA_gene_coverage_csvs = GET_GENE_COVERAGE_POLYA(polyA_terminal_sorted_full_bams_bais.mix(polyA_terminal_sorted_full_control_bams_bais), params.polyA_gene_coverage_csv, terminal_exons_bed, "polyA", params.gene_coverage_script)
-	
-	// combine all csv files from each sample into a single csv file.
-	dedup_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_DEDUP(dedup_gene_coverage_csvs.collect(), params.combined_dedup_gene_coverage_csv)
-	polyA_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_POLYA(polyA_gene_coverage_csvs.collect(), params.combined_polyA_gene_coverage_csv)
-	
-	// total number of genes in a given species 
-	total_num_genes_csv = GET_TOTAL_NUM_GENES(terminal_exons_bed, params.total_num_genes_csv, params.sample_type, params.total_num_genes_script)
-	
-	// draw bar chart of gene coverage for all samples.
-	coverage_barchart = GET_BAR_CHART_GENE_COVERAGE(dedup_combined_gene_coverage_csv, polyA_combined_gene_coverage_csv,\
-	total_num_genes_csv, params.geneCoverage_barchart, params.get_barchart_gene_coverage_script)
+		above_combined_numPolyA_csv = COMBINE_NUM_POLYA_ABOVE(above_num_polyA_csvs.collect(), params.combined_above_num_polyA_csv)
 
-	// PWM_logo
-	// draw a logo of PWM of softclipped reads of length = 5, 6, 7, 8, 9, 10 separately.
-	// This is to see the frequency of "A" appearing in each position of softclipped region.
-	length_five_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_FIVE(fixed_dedup_sorted_full_bams_bais, 5, params.softclip_pwm_logo_script)
-	length_six_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_SIX(fixed_dedup_sorted_full_bams_bais, 6, params.softclip_pwm_logo_script)
-	length_seven_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_SEVEN(fixed_dedup_sorted_full_bams_bais, 7, params.softclip_pwm_logo_script)
-	length_eight_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_EIGHT(fixed_dedup_sorted_full_bams_bais, 8, params.softclip_pwm_logo_script)
-	length_nine_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_NINE(fixed_dedup_sorted_full_bams_bais, 9, params.softclip_pwm_logo_script)
-	length_ten_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_TEN(fixed_dedup_sorted_full_bams_bais, 10, params.softclip_pwm_logo_script)
+		below_num_polyA_csvs = GET_NUM_POLYA_SITES_BELOW(polyA_TE_below_beds_tuple,\
+		params.below_num_polyA_csv, params.below_annotated, params.get_numA_polyA_script)
 
-	// cell_type_specific, merged_cell_type
+		below_combined_numPolyA_csv = COMBINE_NUM_POLYA_BELOW(below_num_polyA_csvs.collect(), params.combined_below_num_polyA_csv)
 
-	if(params.cell_type_analysis == "yes"){
-		// prepare cell type annotation file (metadta)
-		if(params.sample_type == "mouse"){
-			cell_type_metadata = Channel
-				.fromPath(params.mouse_cell_metadata)
+		intronic_num_polyA_csvs = GET_NUM_POLYA_SITES_INTRONIC(polyA_intronic_clustered_beds_tuple,\
+		params.intronic_num_polyA_csv, params.intronic_annotated, params.get_numA_polyA_script)
 
+		intronic_combined_numPolyA_csv = COMBINE_NUM_POLYA_INTRONIC(intronic_num_polyA_csvs.collect(), params.combined_intronic_num_polyA_csv)
+
+		intergenic_num_polyA_csvs = GET_NUM_POLYA_SITES_INTERGENIC(polyA_intergenic_clustered_beds_tuple,\
+		params.intergenic_num_polyA_csv, params.intergenic_annotated, params.get_numA_polyA_script)
+
+		intergenic_combined_numPolyA_csv = COMBINE_NUM_POLYA_INTERGENIC(intergenic_num_polyA_csvs.collect(), params.combined_intergenic_num_polyA_csv)
+
+		exonic_num_polyA_csvs = GET_NUM_POLYA_SITES_EXONIC(polyA_exonic_clustered_beds_tuple,\
+		params.exonic_num_polyA_csv, params.polyA_exonic_annotated, params.get_numA_polyA_script)
+
+		exonic_combined_numPolyA_csv = COMBINE_NUM_POLYA_EXONIC(exonic_num_polyA_csvs.collect(), params.combined_exonic_num_polyA_csv)
+
+		control_num_polyA_csvs = GET_NUM_POLYA_SITES_CONTROL(polyA_clustered_bed_control_tuple,\
+		params.control_num_polyA_csv, params.control_annotated, params.get_numA_polyA_script)
+
+		control_combined_numPolyA_csv = COMBINE_NUM_POLYA_CONTROL(control_num_polyA_csvs.collect(), params.combined_control_num_polyA_csv)
+
+		// combine all csvs containing number of pA sites (at all polyA reads) from each sample into a single csv file.
+		combined_numPolyA_csv = COMBINE_NUM_POLYA_ALL_PAS(num_polyA_csvs.mix(control_combined_numPolyA_csv).collect(), params.combined_all_PAS_num_polyA_csv)
+		// plot a barchart of number of polyA sites for all samples (using all polyA reads).
+		(num_polyA_barchart_png, num_polyA_barchart_svg) = GET_BAR_CHART_NUM_POLYA(combined_numPolyA_csv, params.num_polyA_barchart, params.get_barchart_numpolyA_script)
+		
+		// merge all number of polyA sites from different sample and different class into a single csv file.
+		all_combined_numPolyA_csv = MERGE_ALL_NUM_PAS_CSVS(above_combined_numPolyA_csv, below_combined_numPolyA_csv,\
+		intronic_combined_numPolyA_csv, intergenic_combined_numPolyA_csv, exonic_combined_numPolyA_csv, control_combined_numPolyA_csv, params.all_combined_num_polyA_csv)
+		
+		// combine total motif score csv file, total number of polyA sites csv file and total number of genes csv file together and make a barchart.
+		motif_score_and_numPAS_csv = FUSE_MOTIF_SCORE_NUM_PAS(total_motif_scores_csv, combined_motif_scores_polyA_level, all_combined_numPolyA_csv, params.numPAS_motifScore_csv, params.fuse_numPAS_motifscore_script)
+		
+		//////////////////////////// gene_coverage (number of genes covered by each sample) ////////////////////////////
+
+		// compute number of genes expressed by each sample and save it in each csv file. (includes negative control)
+		dedup_gene_coverage_csvs = GET_GENE_COVERAGE_DEDUP(fixed_dedup_sorted_full_bams_bais.mix(fixed_negative_control_dedup_full_bam_bai), params.dedup_gene_coverage_csv, terminal_exons_bed, "dedup", params.gene_coverage_script)
+		// compute number of genes covered by each sample and save it in each csv file. (includes negative control)
+		polyA_gene_coverage_csvs = GET_GENE_COVERAGE_POLYA(polyA_terminal_sorted_full_bams_bais.mix(polyA_terminal_sorted_full_control_bams_bais), params.polyA_gene_coverage_csv, terminal_exons_bed, "polyA", params.gene_coverage_script)
+		
+		// combine all csv files from each sample into a single csv file.
+		dedup_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_DEDUP(dedup_gene_coverage_csvs.collect(), params.combined_dedup_gene_coverage_csv)
+		polyA_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_POLYA(polyA_gene_coverage_csvs.collect(), params.combined_polyA_gene_coverage_csv)
+		
+		// total number of genes in a given species 
+		total_num_genes_csv = GET_TOTAL_NUM_GENES(terminal_exons_bed, params.total_num_genes_csv, params.sample_type, params.total_num_genes_script)
+		
+		// draw bar chart of gene coverage for all samples.
+		(coverage_barchart_png, coverage_barchart_svg) = GET_BAR_CHART_GENE_COVERAGE(dedup_combined_gene_coverage_csv, polyA_combined_gene_coverage_csv,\
+		total_num_genes_csv, params.geneCoverage_barchart, params.get_barchart_gene_coverage_script)
+
+		//////////////////////////// PWM_logo ////////////////////////////
+		// draw a logo of PWM of softclipped reads of length = 5, 6, 7, 8, 9, 10 separately.
+		// This is to see the frequency of "A" appearing in each position of softclipped region.
+		length_five_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_FIVE(fixed_dedup_sorted_full_bams_bais, 5, params.softclip_pwm_logo_script)
+		length_six_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_SIX(fixed_dedup_sorted_full_bams_bais, 6, params.softclip_pwm_logo_script)
+		length_seven_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_SEVEN(fixed_dedup_sorted_full_bams_bais, 7, params.softclip_pwm_logo_script)
+		length_eight_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_EIGHT(fixed_dedup_sorted_full_bams_bais, 8, params.softclip_pwm_logo_script)
+		length_nine_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_NINE(fixed_dedup_sorted_full_bams_bais, 9, params.softclip_pwm_logo_script)
+		length_ten_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_TEN(fixed_dedup_sorted_full_bams_bais, 10, params.softclip_pwm_logo_script)
+
+		// merged_cell_type
+		if(params.overlap == "yes"){
+			(polyA_bams, polyA_bais) = UNCOUPLE_BAM_WITH_SAMPLE(polyA_sorted_full_bams_bais_sample_only)
+			(all_samples_polyA_bam, all_samples_polyA_bai) = MERGE_ALL_SAMPLES(polyA_bams.collect(), polyA_bais.collect())
+
+			all_samples_polyA_bed = GET_POLYA_UNIQUE_CLEAVAGE_SITES_ALL_SAMPLES(all_samples_polyA_bam, all_samples_polyA_bai, params.polyA_unique_cs_bed_sample, params.get_polyA_unique_cs_script)
+
+			all_samples_polyA_clustered_bed = PERFORM_CLUSTERING_ALL_SAMPLES(all_samples_polyA_bed, params.sample_cluster_out, params.cluster_pas_script)
+
+			// Get overlap between SCINPAS PAS with catalog PAS
+			(all_samples_catalog_overlap_barchart_png, all_samples_catalog_overlap_barchart_svg) = GET_OVERLAP(all_samples_polyA_clustered_bed, params.get_overlap_script)
+			(top_score_PAS_catalog_overlap_barchart_png, top_score_PAS_catalog_overlap_barchart_svg) = GET_TOP_OVERLAP(all_samples_polyA_clustered_bed, params.get_top_overlap_script)
+		}		
+		
+		// cell_type_specific
+		if(params.cell_type_analysis == "yes"){
+			// prepare cell type annotation file (metadta)
+			if(params.sample_type == "mouse"){
+				cell_type_metadata = Channel
+					.fromPath(params.mouse_cell_metadata)
+
+			}
+
+			else if(params.sample_type == "human"){
+				cell_type_metadata = Channel
+					.fromPath(params.human_cell_metadata)
+
+			}
+
+			// make a txt file from metadata containing all CBs of a specific sample and a cell type (type1 and type2)
+			cell_type_txts = SPLIT_CSV_BY_CELL_TYPE(specific_dataFolders.combine(cell_type_metadata), params.split_cell_type_script)	
+
+			// split fixed deduplicated bam file by type1 and type 2 cell type for each sample
+			(type1_bams, type1_bais, type2_bams, type2_bais) = SPLIT_SAMPLE_BY_TYPE(fixed_dedup_sorted_full_bams_bais.join(cell_type_txts, by: 2).view())
+
+			// merge type1 bam files into a single bam file and type 2 bam files into a single bam file.
+			(merged_type1_bam_bai, merged_type2_bam_bai) = MERGE_BY_CELL_TYPE(type1_bams.collect(), type1_bais.collect(), type2_bams.collect(), type2_bais.collect())
+
+			(type1_polyA_full, type1_non_polyA_full) = GET_POLYA_TYPE1_SPECIFIC(merged_type1_bam_bai, params.out_polyA_type1, params.out_non_polyA_type1, params.getPolyA_advanced_script)
+			(type2_polyA_full, type2_non_polyA_full) = GET_POLYA_TYPE2_SPECIFIC(merged_type2_bam_bai, params.out_polyA_type2, params.out_non_polyA_type2, params.getPolyA_advanced_script)
+
+			type1_polyA_full_bams_bais = SORT_POLYA_TYPE1_SPECIFIC(type1_polyA_full)
+			type2_polyA_full_bams_bais = SORT_POLYA_TYPE2_SPECIFIC(type2_polyA_full)
+
+			type1_polyA_full_beds = POLYA_TYPE1_BAM_TO_BED(type1_polyA_full_bams_bais, params.polyA_unique_cs_bed_type1, params.get_polyA_unique_cs_script)
+			type2_polyA_full_beds = POLYA_TYPE2_BAM_TO_BED(type2_polyA_full_bams_bais, params.polyA_unique_cs_bed_type2, params.get_polyA_unique_cs_script)
+			
+			type1_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE1(type1_polyA_full_beds, params.polyA_cluster_out_type1, params.cluster_pas_script)
+			type2_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE2(type2_polyA_full_beds, params.polyA_cluster_out_type2, params.cluster_pas_script)
+
+			// type1 classification (bed)
+			type1_polyA_intergenic_clustered_beds = GENE_NO_INTERSECT_TYPE1(type1_polyA_clustered_beds, genes_bed, params.type1, params.intergenic_template)
+			type1_all_genic_clustered_beds = GENE_INTERSECT_TYPE1(type1_polyA_clustered_beds, genes_bed, params.type1, params.all_genic_template)
+			
+			type1_polyA_intronic_clustered_beds = EXON_NO_INTERSECT_TYPE1(type1_all_genic_clustered_beds, exons_bed, params.type1, params.intronic_template)
+			type1_all_exonic_clustered_beds = EXON_INTERSECT_TYPE1(type1_all_genic_clustered_beds, exons_bed, params.type1, params.all_exonic_template)
+			
+			type1_polyA_exonic_clustered_beds = TE_NO_INTERSECT_TYPE1(type1_all_exonic_clustered_beds, terminal_exons_bed, params.type1, params.exonic_template)
+			type1_polyA_TE_clustered_beds = TE_INTERSECT_TYPE1(type1_all_exonic_clustered_beds, terminal_exons_bed, params.type1, params.te_template)
+
+			type1_polyA_filtered_TE_clustered_beds = TE_FURTHER_INTERSECT_TYPE1(type1_polyA_TE_clustered_beds, further_filtered_terminal_exons, params.type1, params.filtered_te_template)
+
+			// type2 classification (bed)
+			type2_polyA_intergenic_clustered_beds = GENE_NO_INTERSECT_TYPE2(type2_polyA_clustered_beds, genes_bed, params.type2, params.intergenic_template)
+			type2_all_genic_clustered_beds = GENE_INTERSECT_TYPE2(type2_polyA_clustered_beds, genes_bed, params.type2, params.all_genic_template)
+			
+			type2_polyA_intronic_clustered_beds = EXON_NO_INTERSECT_TYPE2(type2_all_genic_clustered_beds, exons_bed, params.type2, params.intronic_template)
+			type2_all_exonic_clustered_beds = EXON_INTERSECT_TYPE2(type2_all_genic_clustered_beds, exons_bed, params.type2, params.all_exonic_template)
+			
+			type2_polyA_exonic_clustered_beds = TE_NO_INTERSECT_TYPE2(type2_all_exonic_clustered_beds, terminal_exons_bed, params.type2, params.exonic_template)
+			type2_polyA_TE_clustered_beds = TE_INTERSECT_TYPE2(type2_all_exonic_clustered_beds, terminal_exons_bed, params.type2, params.te_template)
+
+			type2_polyA_filtered_TE_clustered_beds = TE_FURTHER_INTERSECT_TYPE2(type2_polyA_TE_clustered_beds, further_filtered_terminal_exons, params.type2, params.filtered_te_template)
+			
+			// type1 type 2 distance
+			type1_type2_d_csv = DISTANCE_SCATTER(type1_polyA_filtered_TE_clustered_beds, type2_polyA_filtered_TE_clustered_beds, further_filtered_terminal_exons, params.get_type1_type2_d_script) 
+			t1_t2_scatter_plots = T1_T2_SCATTER(type1_type2_d_csv, params.get_type1_type2_dScatter_script)
+
+			// type 1 motif plot
+			(intergenic_motif_graphs_type1, intergenic_m_overlaid_type1_png, intergenic_m_overlaid_type1_svg, intergenic_motif_orders_type1, intergenic_motif_scores_type1) = GET_MOTIF_FREQ_PLOT_INTERGENIC_TYPE1(type1_polyA_intergenic_clustered_beds,\
+			params.motif_search_out_template_intergenic, params.intergenic_annotated, gtf_peaks, params.type1, params.search_motif_script)	
+
+			(intronic_motif_graphs_type1, intronic_m_overlaid_type1_png, intronic_m_overlaid_type1_svg, intronic_motif_orders_type1, intronic_motif_scores_type1) = GET_MOTIF_FREQ_PLOT_INTRONIC_TYPE1(type1_polyA_intronic_clustered_beds,\
+			params.motif_search_out_template_intronic, params.intronic_annotated, gtf_peaks, params.type1, params.search_motif_script)	
+
+			(exonic_motif_graphs_type1, exonic_m_overlaid_type1_png, exonic_m_overlaid_type1_svg, exonic_motif_orders_type1, exonic_motif_scores_type1) = GET_MOTIF_FREQ_PLOT_EXONIC_TYPE1(type1_polyA_exonic_clustered_beds,\
+			params.motif_search_out_template_exonic, params.polyA_exonic_annotated, gtf_peaks, params.type1, params.search_motif_script)
+
+			(te_motif_graphs_type1, te_m_overlaid_type1_png, te_m_overlaid_type1_svg, te_motif_orders_type1, te_motif_scores_type1) = GET_MOTIF_FREQ_PLOT_TE_TYPE1(type1_polyA_TE_clustered_beds,\
+			params.motif_search_out_template_te, params.te_annotated, gtf_peaks, params.type1, params.search_motif_script)
+			
+			// type 1 # of all PAS
+			type1_all_pas_num_polyA_csv = GET_TYPE1_NUM_POLYA_SITES_ALLPAS(type1_polyA_clustered_beds,\
+			params.allPAS_num_polyA_csv, params.all_polyA_annotated, params.type1, params.get_numA_polyA_script)
+
+			// type 1 # of intronic PAS
+			type1_intronic_num_polyA_csv = GET_TYPE1_NUM_POLYA_SITES_INTRONIC(type1_polyA_intronic_clustered_beds,\
+			params.intronic_num_polyA_csv, params.intronic_annotated, params.type1, params.get_numA_polyA_script)
+
+			// type 1 # of exonic PAS
+			type1_exonic_num_polyA_csv = GET_TYPE1_NUM_POLYA_SITES_EXONIC(type1_polyA_exonic_clustered_beds,\
+			params.exonic_num_polyA_csv, params.polyA_exonic_annotated, params.type1, params.get_numA_polyA_script)
+
+			// type 1 # of TE PAS
+			type1_TE_num_polyA_csv = GET_TYPE1_NUM_POLYA_SITES_TE(type1_polyA_TE_clustered_beds,\
+			params.te_num_polyA_csv, params.te_annotated, params.type1, params.get_numA_polyA_script)
+
+			// type 2 motif plot
+			(intergenic_motif_graphs_type2, intergenic_m_overlaid_type2_png, intergenic_m_overlaid_type2_svg, intergenic_motif_orders_type2, intergenic_motif_scores_type2) = GET_MOTIF_FREQ_PLOT_INTERGENIC_TYPE2(type2_polyA_intergenic_clustered_beds,\
+			params.motif_search_out_template_intergenic, params.intergenic_annotated, gtf_peaks, params.type2, params.search_motif_script)	
+
+			(intronic_motif_graphs_type2, intronic_m_overlaid_type2_png, intronic_m_overlaid_type2_svg, intronic_motif_orders_type2, intronic_motif_scores_type2) = GET_MOTIF_FREQ_PLOT_INTRONIC_TYPE2(type2_polyA_intronic_clustered_beds,\
+			params.motif_search_out_template_intronic, params.intronic_annotated, gtf_peaks, params.type2, params.search_motif_script)	
+
+			(exonic_motif_graphs_type2, exonic_m_overlaid_type2_png, exonic_m_overlaid_type2_svg, exonic_motif_orders_type2, exonic_motif_scores_type2) = GET_MOTIF_FREQ_PLOT_EXONIC_TYPE2(type2_polyA_exonic_clustered_beds,\
+			params.motif_search_out_template_exonic, params.polyA_exonic_annotated, gtf_peaks, params.type2, params.search_motif_script)
+
+			(te_motif_graphs_type2, te_m_overlaid_type2_png, te_m_overlaid_type2_svg, te_motif_orders_type2, te_motif_scores_type2) = GET_MOTIF_FREQ_PLOT_TE_TYPE2(type2_polyA_TE_clustered_beds,\
+			params.motif_search_out_template_te, params.te_annotated, gtf_peaks, params.type2, params.search_motif_script)
+			
+			// type 2 # of all PAS
+			type2_all_pas_num_polyA_csv = GET_TYPE2_NUM_POLYA_SITES_ALLPAS(type2_polyA_clustered_beds,\
+			params.allPAS_num_polyA_csv, params.all_polyA_annotated, params.type2, params.get_numA_polyA_script)
+
+			// type 2 # of intronic PAS
+			type2_intronic_num_polyA_csv = GET_TYPE2_NUM_POLYA_SITES_INTRONIC(type2_polyA_intronic_clustered_beds,\
+			params.intronic_num_polyA_csv, params.intronic_annotated, params.type2, params.get_numA_polyA_script)
+
+			// type 2 # of exonic PAS
+			type2_exonic_num_polyA_csv = GET_TYPE2_NUM_POLYA_SITES_EXONIC(type2_polyA_exonic_clustered_beds,\
+			params.exonic_num_polyA_csv, params.polyA_exonic_annotated, params.type2, params.get_numA_polyA_script)
+
+			// type 2 # of TE PAS
+			type2_TE_num_polyA_csv = GET_TYPE2_NUM_POLYA_SITES_TE(type2_polyA_TE_clustered_beds,\
+			params.te_num_polyA_csv, params.te_annotated, params.type2, params.get_numA_polyA_script)	
 		}
 
-		else if(params.sample_type == "human"){
-			cell_type_metadata = Channel
-				.fromPath(params.human_cell_metadata)
-
-		}
-
-		// make a txt file from metadata containing all CBs of a specific sample and a cell type (type1 and type2)
-		cell_type_txts = SPLIT_CSV_BY_CELL_TYPE(specific_dataFolders.combine(cell_type_metadata), params.split_cell_type_script)	
-
-		// split fixed deduplicated bam file by type1 and type 2 cell type for each sample
-		(type1_bams, type1_bais, type2_bams, type2_bais) = SPLIT_SAMPLE_BY_TYPE(fixed_dedup_sorted_full_bams_bais.join(cell_type_txts, by: 2).view())
-
-		// merge type1 bam files into a single bam file and type 2 bam files into a single bam file.
-		(merged_type1_bam_bai, merged_type2_bam_bai) = MERGE_BY_CELL_TYPE(type1_bams.collect(), type1_bais.collect(), type2_bams.collect(), type2_bais.collect())
-
-		(type1_polyA_full, type1_non_polyA_full) = GET_POLYA_TYPE1_SPECIFIC(merged_type1_bam_bai, params.out_polyA_type1, params.out_non_polyA_type1, params.getPolyA_advanced_script)
-		(type2_polyA_full, type2_non_polyA_full) = GET_POLYA_TYPE2_SPECIFIC(merged_type2_bam_bai, params.out_polyA_type2, params.out_non_polyA_type2, params.getPolyA_advanced_script)
-
-		type1_polyA_full_bams_bais = SORT_POLYA_TYPE1_SPECIFIC(type1_polyA_full)
-		type2_polyA_full_bams_bais = SORT_POLYA_TYPE2_SPECIFIC(type2_polyA_full)
-
-		type1_polyA_full_beds = POLYA_TYPE1_BAM_TO_BED(type1_polyA_full_bams_bais, params.polyA_unique_cs_bed_type1, params.get_polyA_unique_cs_script)
-		type2_polyA_full_beds = POLYA_TYPE2_BAM_TO_BED(type2_polyA_full_bams_bais, params.polyA_unique_cs_bed_type2, params.get_polyA_unique_cs_script)
-		
-		type1_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE1(type1_polyA_full_beds, params.polyA_cluster_out_type1, params.cluster_pas_script)
-		type2_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE2(type2_polyA_full_beds, params.polyA_cluster_out_type2, params.cluster_pas_script)
-
-		type1_all_genic_clustered_beds = GENE_INTERSECT_TYPE1(type1_polyA_clustered_beds, genes_bed, params.type1, params.all_genic_template)
-		type1_all_exonic_clustered_beds = EXON_INTERSECT_TYPE1(type1_all_genic_clustered_beds, exons_bed, params.type1, params.all_exonic_template)
-		type1_polyA_TE_clustered_beds = TE_INTERSECT_TYPE1(type1_all_exonic_clustered_beds, terminal_exons_bed, params.type1, params.te_template)
-		type1_polyA_filtered_TE_clustered_beds = TE_FURTHER_INTERSECT_TYPE1(type1_polyA_TE_clustered_beds, further_filtered_terminal_exons, params.type1, params.filtered_te_template)
-
-		type2_all_genic_clustered_beds = GENE_INTERSECT_TYPE2(type2_polyA_clustered_beds, genes_bed, params.type2, params.all_genic_template)
-		type2_all_exonic_clustered_beds = EXON_INTERSECT_TYPE2(type2_all_genic_clustered_beds, exons_bed, params.type2, params.all_exonic_template)
-		type2_polyA_TE_clustered_beds = TE_INTERSECT_TYPE2(type2_all_exonic_clustered_beds, terminal_exons_bed, params.type2, params.te_template)
-		type2_polyA_filtered_TE_clustered_beds = TE_FURTHER_INTERSECT_TYPE2(type2_polyA_TE_clustered_beds, further_filtered_terminal_exons, params.type2, params.filtered_te_template)
-		
-		type1_type2_d_csv = DISTANCE_SCATTER(type1_polyA_filtered_TE_clustered_beds, type2_polyA_filtered_TE_clustered_beds, further_filtered_terminal_exons, params.get_type1_type2_d_script) 
-
-		t1_t2_scatter_plot = T1_T2_SCATTER(type1_type2_d_csv, params.get_type1_type2_dScatter_script)
-	}	
-}	
+	}
+	
+}

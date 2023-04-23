@@ -2,26 +2,6 @@
 
 nextflow.enable.dsl=2
 
-
-process PREPARE_SINGLE_LINKAGE{
-
-	label "gcc"
-	publishDir "${params.folder_template}/src", mode: 'copy'
-	
-	input:
-	path cpp
-	
-	output:
-	val "done"
-	path "single_linkage"
-
-	script:
-	"""
-	g++ ${cpp} \
-		-o single_linkage
-	"""	
-}
-
 process PREPARE_IN_SLC {
 
 	label "bash"
@@ -30,23 +10,14 @@ process PREPARE_IN_SLC {
 	input:
 	val specific_sample
 	val species
-	val prepare_singleLinkage
 
 	output:
-	path "in_slc"
-	path "in_slc_PWM"
-	path "in_slc_motif"
-	path "in_slc_num_polyA"
 	// pass as "val" and then when you pass full data as input use "path". This is to avoid scope issue. 
 	// (you didnt receive full data as an input here but you are trying to use it as a file)
 	tuple val("${params.folder_template}/data/${species}/${params.result_folder}/${specific_sample}.bam"), val("${params.folder_template}/data/${species}/${params.result_folder}/${specific_sample}.bam.bai"), val("${specific_sample}")
 
 	script:
 	"""
-	mkdir in_slc
-	mkdir in_slc_PWM
-	mkdir in_slc_motif
-	mkdir in_slc_num_polyA
 	"""
 }
 
@@ -305,7 +276,8 @@ process FIX_SOFTCLIPPED_REGION{
 
 	output:
 	tuple path("${params.bam_after_fixation}"), val("${specific_sample}")
-	
+	tuple path("num_fixed_unfixed.csv"), val("${specific_sample}")
+
 	script:
 	"""
 	python3 ${python_script}\
@@ -461,7 +433,7 @@ process GET_SPAN_HIST{
 	val(file_name)
 
 	output:
-	path "${specific_sample}_${file_name}"
+	path "${specific_sample}_${file_name}*"
 
 	script:
 	"""
@@ -526,6 +498,7 @@ process SORT_PHASE2{
 process GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED{
 
 	label "custom_python"
+	label "middle_memory"
 	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/bed_clustering", mode: 'copy'
 	
 	input:
@@ -897,56 +870,6 @@ process MERGE_ALL_COUNTS{
 	"""
 }
 
-// process MERGE_ALL_COUNTS{
-// 	label "bash"
-// 	publishDir "${params.folder_template}/result/${params.result_folder}/separate_merged_counts", mode: 'copy'
-	
-// 	input:
-// 	path(raw_concat_csv)
-// 	path(dedup_concat_csv)
-// 	path(dedup_softclipped_concat_csv)
-// 	path(nonpolyA_concat_csv)
-// 	path(polyA_concat_csv)
-// 	path(polyA_T_concat_csv)
-// 	path(intronic_concat_csv)
-// 	path(intergenic_concat_csv)
-// 	path(exonic_concat_csv)
-// 	val(out_name)
-	
-// 	output:
-// 	path("${out_name}.csv")
-
-// 	script:
-// 	"""
-// 	cat *.csv > ${out_name}.csv
-// 	"""
-// }
-
-// process MERGE_ALL_COUNTS{
-// 	label "bash"
-// 	publishDir "${params.folder_template}/result/${params.result_folder}/separate_merged_counts", mode: 'copy'
-	
-// 	input:
-// 	path(raw_concat_csv)
-// 	path(dedup_concat_csv)
-// 	path(dedup_softclipped_concat_csv)
-// 	path(nonpolyA_concat_csv)
-// 	path(polyA_concat_csv)
-// 	path(polyA_T_concat_csv)
-// 	path(intronic_concat_csv)
-// 	path(intergenic_concat_csv)
-// 	path(exonic_concat_csv)
-// 	val(out_name)
-	
-// 	output:
-// 	path("${out_name}.csv")
-
-// 	script:
-// 	"""
-// 	cat *.csv > ${out_name}.csv
-// 	"""
-// }
-
 process SPLIT_PER_SAMPLE{
 
 	label "custom_python"
@@ -1004,7 +927,8 @@ process GET_BAR_CHART{
 	path python_script
 	
 	output:
-	path "${specific_sample}_${params.barchart_output}"
+	path "${specific_sample}_${params.barchart_output}.png"
+	path "${specific_sample}_${params.barchart_output}.svg"
 
 	script:
 	"""
@@ -1018,6 +942,8 @@ process GET_BAR_CHART{
 process GET_DISTANCE_ALTER{
 
 	label "custom_python"
+	label "heavy_memory"
+	label "long_time"
 	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/distance", mode: 'copy'
 
 	input:
@@ -1055,6 +981,8 @@ process UNCOUPLE_CSV_WITH_SAMPLE{
 process GET_D_HISTOGRAM_ALTER{
 
 	label "custom_python"
+	label "heavy_memory"
+
 	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/distance", mode: 'copy'
 
 	input:
@@ -1062,8 +990,9 @@ process GET_D_HISTOGRAM_ALTER{
 	path python_script
 
 	output:
-	path "${params.distance_histogram_file_name}"
-	
+	path "${params.distance_histogram_file_name}.png"
+	path "${params.distance_histogram_file_name}.svg"
+
 	script:
 	"""
 	python3 ${python_script}\
@@ -1085,7 +1014,7 @@ process PLOT_ATGC{
 	path python_script
 
 	output:
-	path "${specific_sample}_${output_name}"
+	path "${specific_sample}_${output_name}*"
 
 	script:
 	"""
@@ -1113,6 +1042,7 @@ process GET_MOTIF_FREQ_PLOT{
 	output:
 	path ("${specific_sample}_${output_name}*.png")
 	path ("${specific_sample}_${output_name}_overlaid.png")
+	path ("${specific_sample}_${output_name}_overlaid.svg")
 	path ("${specific_sample}_${output_name}_ordered_motives.csv")
 	path ("${specific_sample}_${output_name}_scores.csv")
 
@@ -1143,6 +1073,7 @@ process GET_MOTIF_FREQ_GTF_PLOT{
 	output:
 	path "${output_name}_*.png"
 	path "${output_name}_overlaid.png"
+	path "${output_name}_overlaid.svg"
 	path "${output_name}_ordered_*.csv"
 	path "${output_name}_peaks.csv"
 
@@ -1254,7 +1185,7 @@ process COMBINE_MOTIF_ORDERS{
 process COMPUTE_SCORES_FOR_MOTIF_ALTER{
 
 	label "custom_python"
-	label "heavy_memory"
+	label "heavy_computation"
 	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/motif_freq_plot", mode: 'copy'
 
 	input:
@@ -1266,6 +1197,7 @@ process COMPUTE_SCORES_FOR_MOTIF_ALTER{
 	output:
 	tuple path ("${specific_sample}_${output_name}*.png"), val("${specific_sample}")
 	tuple path ("${specific_sample}_${output_name}_overlaid.png"), val("${specific_sample}")
+	tuple path ("${specific_sample}_${output_name}_overlaid.svg"), val("${specific_sample}")
 	path "${specific_sample}_${output_name}_*.csv"
 	
 	script:
@@ -1309,7 +1241,8 @@ process GET_BAR_CHART_SCORE_MOTIF_POLYA{
 	path python_script
 	
 	output:
-	path "${params.polyA_motif_score}"
+	path "${params.polyA_motif_score}.png"
+	path "${params.polyA_motif_score}.svg"
 
 	script:
 	"""
@@ -1330,8 +1263,10 @@ process GET_SOFTCLIPPED_DISTRIBUTION{
 	path python_script
 
 	output:
-	tuple path ("${specific_sample}_${output_name}"), val("${specific_sample}")
-	
+	tuple path ("${specific_sample}_${output_name}.png"), val("${specific_sample}")
+	tuple path ("${specific_sample}_${output_name}.svg"), val("${specific_sample}")
+	tuple path ("${specific_sample}_*.csv"), val("${specific_sample}")
+
 	script:
 	"""
 	python3 ${python_script}\
@@ -1419,7 +1354,8 @@ process GET_BAR_CHART_NUM_POLYA{
 	path python_script
 	
 	output:
-	path "${output_name}"
+	path "${output_name}.png"
+	path "${output_name}.svg"
 
 	script:
 	"""
@@ -1490,8 +1426,9 @@ process GET_BAR_CHART_GENE_COVERAGE{
 	path python_script
 	
 	output:
-	path "${coverage_output_name}"
-	
+	path "${coverage_output_name}.png"
+	path "${coverage_output_name}.svg"
+
 	script:
 	"""
 	python3 ${python_script}\
@@ -1513,7 +1450,7 @@ process SOFTCLIP_PWM_LOGO{
 	path python_script
 	
 	output:
-	path "${specific_sample}_${params.softclip_pwm_logo}*.png"
+	path "${specific_sample}_${params.softclip_pwm_logo}*"
 	
 	script:
 	"""
@@ -1655,6 +1592,7 @@ process SORT_CELL_TYPE{
 process GET_CELL_TYPE_POLYA_UNIQUE_CS_BED{
 
 	label "custom_python"
+	label "middle_memory"
 	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
 	
 	input:
@@ -1719,6 +1657,27 @@ process BED_INTERSECT_CELL_TYPE{
 	"""
 }
 
+process BED_NO_INTERSECT_CELL_TYPE{
+
+	label "bedtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+
+	input:
+	path(clustered_bed_file)
+	// either terminal_exons, exons or genes.bed
+	path(bed)
+	val(type)
+	val(no_intersect_out_name)
+	
+	output:
+	path("${type}_${no_intersect_out_name}.bed")
+	
+	script:
+	"""
+	bedtools intersect -s -v -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > ${type}_${no_intersect_out_name}.bed
+	"""
+}
+
 process DISTANCE_SCATTER{
 
 	label "custom_python"
@@ -1764,4 +1723,199 @@ process T1_T2_SCATTER{
 	--type1 ${params.type1}\
 	--type2 ${params.type2}
 	"""
+}
+
+process GET_CELL_TYPE_MOTIF_FREQ_PLOT{
+
+	label "custom_python"
+	label "heavy_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+
+	input:
+	path (bed)
+	val output_name
+	val annotated
+	path peaks_csv
+	val type
+	path python_script
+
+	output:
+	path ("${type}_${output_name}*.png")
+	path ("${type}_${output_name}_overlaid.png")
+	path ("${type}_${output_name}_overlaid.svg")
+	path ("${type}_${output_name}_ordered_motives.csv")
+	path ("${type}_${output_name}_scores.csv")
+
+	script:
+	"""
+	python3 ${python_script}\
+	--bed ${bed}\
+	--fasta ${params.gtf_fasta_location_template}/${params.sample_type}/${params.genome_fasta}\
+	--out_name ${type}_${output_name}\
+	--annotated ${annotated}\
+	--window ${params.motif_search_window}\
+	--motif_info_dir ${params.motif_info_dir}\
+	--downstream ${params.down_limit}\
+	--peaks ${peaks_csv}\
+	"""
+}
+
+process GET_CELL_TYPE_NUM_POLYA_SITES{
+	label "custom_python"
+	publishDir "${params.folder_template}/result/${params.result_folder}/merged_cell_type", mode: 'copy'
+
+	input:
+	path(bed)
+	val csv_output_name
+	val annotated
+	val type
+	path python_script
+
+	output:
+	path "${type}_${csv_output_name}"
+	
+	script:
+	"""
+	python3 ${python_script}\
+	--bed ${bed}\
+	--csv_out_name ${type}_${csv_output_name}\
+	--annotated ${annotated}\
+	--cluster_threshold ${params.cluster_threshold}
+	"""	
+}
+
+process UNCOUPLE_BAM_WITH_SAMPLE{
+
+	label "bash"
+
+	input:
+	tuple path(bam), path(bai), val(specific_sample)
+
+	output:
+	path("${bam}")
+	path("${bai}")
+
+	script:
+	"""
+	"""
+}
+
+process MERGE_ALL_SAMPLES{
+
+	label "samtools"
+	publishDir "${params.folder_template}/result/${params.result_folder}/overlap_with_catalog", mode: 'copy'
+	
+	input:
+	path(bams)
+	path(bais)
+
+	output:
+	path ("all_samples_polyA_full_sorted.bam")
+	path ("all_samples_polyA_full_sorted.bam.bai")
+		
+	script:
+	"""
+	samtools merge -f -o all_samples_polyA_full.bam 10X*sorted.bam
+	samtools sort all_samples_polyA_full.bam -o all_samples_polyA_full_sorted.bam
+	samtools index all_samples_polyA_full_sorted.bam
+	"""
+}
+
+process GET_POLYA_UNIQUE_CLEAVAGE_SITES_ALL_SAMPLES{
+
+	label "custom_python"
+	label "middle_memory"
+	publishDir "${params.folder_template}/result/${params.result_folder}/overlap_with_catalog", mode: 'copy'
+	
+	input:
+	path(bam)
+	path(bai)
+	val(polyA_unique_cs_bed)
+	path python_script
+
+	output:
+	path("merged_samples_${polyA_unique_cs_bed}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	--bam ${bam}\
+	--bed_out merged_samples_${polyA_unique_cs_bed}\
+	--use_fc ${params.use_fc}
+	"""
+}
+
+process PERFORM_CLUSTERING_ALL_SAMPLES{
+
+	label "custom_python"
+	label "heavy_computation"
+	publishDir "${params.folder_template}/result/${params.result_folder}/overlap_with_catalog", mode: 'copy'
+	
+	input:
+	path(cleavage_site_bed)
+	val(clustered_bed)
+	path python_script
+
+	output:
+	path("all_${clustered_bed}")
+
+	script:
+	"""
+	python3 ${python_script}\
+	in_bed ${cleavage_site_bed}\
+	--out all_${clustered_bed}\
+	--du ${params.cluter_up}\
+	--dd ${params.cluster_down}\
+	--c ${params.num_cores}
+	"""
+}
+
+process GET_OVERLAP{
+	label "custom_python"
+	label "heavy_computation"
+	publishDir "${params.folder_template}/result/${params.result_folder}/overlap_with_catalog", mode: 'copy'
+
+	input:
+	path(pas_bed_dir)
+	path python_script
+
+	output:
+	path "${params.result_folder}_${params.overlap_catalog_figure}.png"
+	path "${params.result_folder}_${params.overlap_catalog_figure}.svg"
+
+	script:
+	"""
+	python3 ${python_script}\
+	--pas_bed_dir ${pas_bed_dir}\
+	--catalog_dir ${params.gtf_fasta_location_template}/${params.sample_type}/${params.catalog}\
+	--overlap_barchart ${params.result_folder}_${params.overlap_catalog_figure}\
+	--species ${params.sample_type}\
+	--n_cores ${params.num_cores}\
+	--threshold ${params.cluster_threshold}
+	"""	
+}
+
+process GET_TOP_OVERLAP{
+	label "custom_python"
+	label "heavy_computation"
+	publishDir "${params.folder_template}/result/${params.result_folder}/overlap_with_catalog", mode: 'copy'
+
+	input:
+	path(pas_bed_dir)
+	path python_script
+
+	output:
+	path "${params.result_folder}_${params.top_overlap_catalog_figure}.png"
+	path "${params.result_folder}_${params.top_overlap_catalog_figure}.svg"
+	
+	script:
+	"""
+	python3 ${python_script}\
+	--pas_bed_dir ${pas_bed_dir}\
+	--catalog_dir ${params.gtf_fasta_location_template}/${params.sample_type}/${params.catalog}\
+	--overlap_barchart ${params.result_folder}_${params.top_overlap_catalog_figure}\
+	--species ${params.sample_type}\
+	--n_cores ${params.num_cores}\
+	--threshold ${params.cluster_threshold}
+	"""	
 }

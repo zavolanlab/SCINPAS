@@ -14,7 +14,7 @@ import argparse
 import csv
 
 """
-Aim: get a span of a cluster with same CB + UB tags or CB + YB tags (log10 scale).
+Aim: get a span of a cluster with same CB + UB tags + same chromosome or CB + YB tags + same chromosome (log10 scale).
 
 YB tag: when you split a cluster of CB and UB tags into several sub-clusters because the span of the cluster is too large, 
 you assign different UB tags to each sub-clusters and name it as YB tag.
@@ -28,7 +28,7 @@ def write_out_to_csv(data, file_name):
     Parameters
     ----------
     data : list
-        a list of cluster span of reads with same CB and UMI tags (log10 scale).
+        a list of cluster span of reads with same CB, UB and chromosome (log10 scale).
     
     file_name : string
         output span csv file name.
@@ -127,15 +127,15 @@ def get_distribution(unique_pairs, reads_per_ub):
     Parameters
     ----------
     unique_pairs : list of tuple
-        It is an unique pair of a cell barcode (CB) and UMI tag (UB or YB)
+        It is an unique pair of a cell barcode (CB), UMI tag (UB or YB) and a chromosome
        
     reads_per_ub : dictionary of dictionary.
-        first key: CB and UB
+        first key: CB, UB and chromosome
         second key: 'reads', 'starts', 'ends' ('starts and 'ends' are extended from original input)
         value: 
-            if second key is 'reads': reads that have same CB and UB
-            if second key is 'starts': start positions of reads that have same CB and UB
-            if second key is 'ends': end positions of reads that have same CB and UB
+            if second key is 'reads': reads that have same CB, UB and chromosome
+            if second key is 'starts': start positions of reads that have same CB, UB and chromosome
+            if second key is 'ends': end positions of reads that have same CB, UB and chromosome
     Returns
     -------
     spans : list
@@ -145,7 +145,7 @@ def get_distribution(unique_pairs, reads_per_ub):
     spans = []
     list_c = ['I', 'D', 'N', 'S', 'H', 'P', 'X']
     for unique_pair in unique_pairs:
-        # get a list of reads with the same CB and (UB or YB) tags.
+        # get a list of reads with the same CB and (UB or YB) tags and same chromosome.
         read_list = reads_per_ub[unique_pair]['reads']
         start_positions = []
         end_positions = []
@@ -191,13 +191,9 @@ def get_distribution(unique_pairs, reads_per_ub):
             reads_per_ub[unique_pair]["start"] = start_positions
             reads_per_ub[unique_pair]["end"] = end_positions
             span = max(end_positions) - min(start_positions)
+                        
+            spans.append(math.log10(span + 1))
             
-            # log10(0) is -Inf. Hence converted into 0.
-            if span == 0:
-                spans.append(math.log10(1))
-            
-            else:
-                spans.append(math.log10(span))
     return spans
 
 def get_all_reads_per_umi (sam, type_input):
@@ -218,44 +214,44 @@ def get_all_reads_per_umi (sam, type_input):
     Returns
     -------
     unique_pairs : list of tuple
-        It is an unique pair of a cell barcode (CB) and UMI tag (UB or YB)
+        It is an unique pair of a cell barcode (CB), UMI tag (UB or YB) and a chromosome
         UB = UMI tag before splitting a cluster into several sub-clusters. (for raw)
         YB = UMI tag after splitting a cluster into several sub-clusters. (for splitted and dedup)
        
     reads_per_ub : dictionary of dictionary.
-        first key: CB and UMI
+        first key: CB, UMI and chromosome.
         second key: 'reads'
-        value: reads that have same CB and UMI
+        value: reads that have same CB, UMI and chromosome.
 
     """
     reads_per_ub = {}
     unique_pairs=set()
     
     for read in sam.fetch():
-        
+        chrom = read.reference_name
         if type_input == "dedup" or type_input == "split":
             if read.has_tag('YB') and read.has_tag('CB'):
                 umi = read.get_tag('YB')
                 cb = read.get_tag('CB')
                 
-                if (cb, umi) not in reads_per_ub.keys():
-                    reads_per_ub[(cb,umi)] = {}
-                    reads_per_ub[(cb,umi)]['reads'] = []
-                reads_per_ub[(cb,umi)]['reads'].append(read)
+                if (cb, umi, chrom) not in reads_per_ub.keys():
+                    reads_per_ub[(cb, umi, chrom)] = {}
+                    reads_per_ub[(cb, umi, chrom)]['reads'] = []
+                reads_per_ub[(cb, umi, chrom)]['reads'].append(read)
                 # unique umis
-                unique_pairs.add((cb,umi))
+                unique_pairs.add((cb, umi, chrom))
                 
         elif type_input == "raw":
-            if read.has_tag('UB') and read.has_tag('CB'):
-                umi = read.get_tag('UB')
+            if read.has_tag('UR') and read.has_tag('CB'):
+                umi = read.get_tag('UR')
                 cb = read.get_tag('CB')
                 
-                if (cb, umi) not in reads_per_ub.keys():
-                    reads_per_ub[(cb,umi)] = {}
-                    reads_per_ub[(cb,umi)]['reads'] = []
-                reads_per_ub[(cb,umi)]['reads'].append(read)
+                if (cb, umi, chrom) not in reads_per_ub.keys():
+                    reads_per_ub[(cb, umi, chrom)] = {}
+                    reads_per_ub[(cb, umi, chrom)]['reads'] = []
+                reads_per_ub[(cb, umi, chrom)]['reads'].append(read)
                 #unique umis
-                unique_pairs.add((cb,umi))
+                unique_pairs.add((cb, umi, chrom))
                 
     unique_pairs = list(unique_pairs)
     

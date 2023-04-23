@@ -123,7 +123,7 @@ def classify_bam(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
     overlap_count = 0
     for read in polyA_reads:
         chrom, rev, end = get_cs(read, use_fixed_cs)
-        filtered_bed = bed[(bed['seqid'] == chrom) & (bed['start'] <= end) & (bed['end'] >= end) & (bed['strand'] == rev)]
+        filtered_bed = bed[(bed['seqid'] == chrom) & (bed['start'] <= end) & (bed['end'] >= end) & (bed['strand'] == rev)].copy()
         
         if len(filtered_bed) == 1:
             # e.g. intergenic_chr19:4833275:+
@@ -150,6 +150,7 @@ def classify_bam(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             final_reads.append(read)
             
         elif len(filtered_bed) == 2:
+            # a read is mapping between 2 clusters exactly
             print('overlapping cluster......')
             overlap_count += 1
             ind = list(filtered_bed['score']).index(max(list(filtered_bed['score'])))

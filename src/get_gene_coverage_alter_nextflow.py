@@ -59,7 +59,7 @@ def check_GX_overlap(tag, bed):
     False if GX tag from the read does not exist in the bed file.
     """         
     bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
-    filtered_exons = bed[(bed['id'] == tag) & (bed['score'] <= 3)]
+    filtered_exons = bed[(bed['id'] == tag) & (bed['score'] <= 3)].copy()
     
     if len(filtered_exons) >= 1:
         return True
@@ -222,7 +222,7 @@ def run_process():
     
     elif type_read == 'dedup':
         
-        num_genes_covered = get_num_genes_covered(GX_dicts, 1, terminal_exons)
+        num_genes_covered = get_num_genes_covered(GX_dicts, read_count_threshold, terminal_exons)
         print('successfully got number of genes expressed in the dedup bam file')        
     
         final_data = [sample_name, num_genes_covered]

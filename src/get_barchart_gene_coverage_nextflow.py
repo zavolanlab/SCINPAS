@@ -42,7 +42,7 @@ def autolabel(rects, ax):
                 '%d' % float(height),
                 ha='center', va='bottom')
         
-def plot_barchart(dataframe, file_name, tot_num_genes):
+def plot_barchart(dataframe, file_template, tot_num_genes):
     """
     Parameters
     ----------
@@ -51,8 +51,8 @@ def plot_barchart(dataframe, file_name, tot_num_genes):
         1) dataframe containing the number of genes expressed by each sample from dedup bam file.
         2) dataframe containing the number of genes covered by each sample from polyA reads mapping to terminal exons.
           
-    file_name : string
-        output file name
+    file_template : string
+        output file template
     
     tot_num_genes : int
         total number of expressed genes from the species of interest
@@ -82,7 +82,10 @@ def plot_barchart(dataframe, file_name, tot_num_genes):
                    
     # a single bar of total number of genes 
     rectangles3 = plt.bar(0, tot_num_genes, width, label = "total # genes")
-                              
+    
+    x_modified = np.array((range(0, len(labels)+1)))
+    labels.insert(0, "total")
+    
     plt.xticks(
     rotation=45, 
     horizontalalignment='right',
@@ -95,15 +98,20 @@ def plot_barchart(dataframe, file_name, tot_num_genes):
     plt.yticks(fontsize='x-large')
     plt.ylabel('number of genes or number of reads', fontsize = 'x-large')
     plt.yscale('log')
-    plt.xticks(x, labels, fontsize='x-large')                           
-#    autolabel(rectangles1, axis)
-#    autolabel(rectangles2, axis)
-#    autolabel(rectangles3, axis)
+    plt.xticks(x_modified, labels, fontsize='x-large')                           
+    autolabel(rectangles1, axis)
+    autolabel(rectangles2, axis)
+    autolabel(rectangles3, axis)
     
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
     
-    plt.rcParams['font.family'] = "Arial"
-    plt.savefig(file_name, bbox_inches='tight')
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
   
 def merge_dataframe(Dedup_csv_dir, PolyA_csv_dir, tot_gene_dir):
     """

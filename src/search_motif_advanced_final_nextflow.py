@@ -51,7 +51,9 @@ def modify_class_name(class_type):
         
     elif class_type == 10:
         modified_class_name = "NTE"        
-        
+
+    elif class_type == 14:
+        modified_class_name = "TE"         
     return modified_class_name
 
 def write_out(row_data, o_file):
@@ -407,7 +409,7 @@ def get_colsum_list(data, motives):
     
     return col_sums_list
 
-def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
+def plot_all_motif_overlaid_plots(df, m_infos, file_template, up, fasta_F, down):
     """
     Parameters
     ----------
@@ -426,8 +428,8 @@ def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
         1st element of a tuple: motif name. e.g. AAUAAA
         2nd element of a tuple: length of a motif. e.g. 6
 
-    o_name : string
-        motif frequency plot output file name.
+    file_template : string
+        output file template
             
     up : int (positive integer)
         how many number of base pairs do we go upstream of fixed representative cleavage site?
@@ -488,7 +490,7 @@ def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
         
         # reduce df by removing rows that were used for plotting and the column (max_motif) used
         # reduce column as well. Otherwise, same motif can be used multiple times
-        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])]
+        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])].copy()
 
         print('succesfully reduced df')        
         motives_only.remove(max_motif)
@@ -502,10 +504,13 @@ def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
     plt.xlabel('bp upstream', fontsize = 'x-large')
     plt.ylabel('frequency', fontsize = 'x-large')
     
-    plt.rcParams['font.family'] = "Arial"
+    plt.rcParams['font.family'] = "DejaVu Sans"
     
-    overlay_output = o_name + "_overlaid.png"
-    plt.savefig(overlay_output, bbox_inches='tight')    
+    file1 = file_template + "_overlaid.png"
+    file2 = file_template + "_overlaid.svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight') 
     
 def plot_all_motif_plots(df, m_infos, o_name, up, fasta_F, down, peaks_dict):
     """
@@ -597,7 +602,7 @@ def plot_all_motif_plots(df, m_infos, o_name, up, fasta_F, down, peaks_dict):
         
         # reduce df by removing rows that were used for plotting and the column (max_motif) used
         # reduce column as well. Otherwise, same motif can be used multiple times
-        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])]
+        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])].copy()
 
         print('succesfully reduced df')
         
@@ -956,11 +961,9 @@ def run_process():
     print('successfully drew all plots, got all ordered motives and scores for all motives')
     
     ordered_motif_csv_name = out_name + "_ordered_motives.csv"
-    # e.g. 10X_P4_7
-    sample_name = '_'.join(out_name.split('_')[0:3])
-    # e.g. annotated
-    sub_header_name = out_name.split('_')[3]
-    # modify class name so that it is compatible with the terminology used in the paper.
+    
+    sample_name = '_'.join(out_name.split('_')[:-1])
+    sub_header_name = out_name.split('_')[-1]
     sub_header_name = modify_class_name(annotated)
     
     ordered_motives.insert(0, sample_name)

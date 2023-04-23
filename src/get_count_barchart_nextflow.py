@@ -19,7 +19,7 @@ import numpy as np
 Aim1: draw bar plot of read counts in each class (for a given sample)
 Aim2: draw bar plot of read counts in each class (for a negative control)
 """
-def plot_bar(dataframe, file_name):
+def plot_bar(dataframe, file_template):
     """
     Parameters
     ----------
@@ -28,8 +28,8 @@ def plot_bar(dataframe, file_name):
         1) dataframe containing the number of reads in each class of a sample
         2) dataframe containing the number of reads in each class of a negative control
           
-    file_name : string
-        output file name
+    file_template : string
+        output file template
     
     Returns
     -------
@@ -38,9 +38,9 @@ def plot_bar(dataframe, file_name):
     2) the number of reads in each class of a negative control
     in 1 figure.
     """   
-    labels = list(dataframe['class'])
-    num_reads_samples = list(dataframe['#_reads_sample'])
-    num_reads_control = list(dataframe['#_reads_control'])
+    labels = list(dataframe['class'].copy())
+    num_reads_samples = list(dataframe['#_reads_sample'].copy())
+    num_reads_control = list(dataframe['#_reads_control'].copy())
     
     # the label locations                                               
     # shifted by 1 to the right because on the first position, you will put the total number of genes.
@@ -68,8 +68,13 @@ def plot_bar(dataframe, file_name):
     
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
     
-    plt.rcParams['font.family'] = "Arial"
-    plt.savefig(file_name, bbox_inches='tight')
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
         
 def merge_count_dataframe(sample_dir, control_dir):
     """

@@ -6,10 +6,15 @@ directly from single 3'end RNA sequencing data.
 
 ## Workflow
   ### general workflow
-  ![](workflow.png)
+  ![](overall_workflow.png)
   
   ### read classification into 5 categories
-  ![](read_classification.png)
+  ![](classification.png)
+
+  ### analyses
+  There are different layers of analyses. and hence you need to use the relevant parameters for running the pipeline.
+  Please refer to this figure: 
+  ![](analysis.png)
 
 ## Requirements
 ![](directory.png)
@@ -46,8 +51,13 @@ There should be at least 1 letter before 10X to differentiate between input file
 raw negative control refers to the raw bam file of one of sample data. (same data but named differently).
 deduplicated negative control refers to the UMI-tools deduplicated version of one of sample data. 
 
+12) type1 and type2 parameter in nextflow.config file refers to cell type 1 and cell type 2 in the dataset you used.
+Type1 is the default cell type. e.g. spermatocyte.
+Type2 is cell type that you expect changes in average terminal exon length and/or the number of intronic polyA sites. e.g. elongating spermatid.
+This is only relevant if you do "cell_type_analysis". 
+
 **Note: folder structures/locations, gtf file and reference genome can be changed in the nextflow.config file. 
-However, input file format, gtf, fasta file and negative controls should not be changed because
+However, input file format, gtf, fasta file and negative control should not be changed because
 downstream processes expect that name.**
 
 ## Command line
@@ -55,10 +65,51 @@ downstream processes expect that name.**
 > Note: execution shown for slurm cluster. 
 > Create and select other profile as fit.
 
-If you want to run mouse samples:
-`./nextflow run main.nf -profile slurm -resume --sample_type "mouse"`
+1. Running mouse samples:
 
-If you want to run human samples:
-`./nextflow run main.nf -profile slurm -resume --sample_type "human"`
+	1.1. if you do not want to run analysis:
+	./nextflow run main.nf -profile slurm -resume --sample_type "mouse"
+
+	1.2. if you want to do analysis but not (cell type specific and overlap analysis): 
+	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" 
+
+	1.3. if you want to do analysis including cell type specific analysis: 
+	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --cell_type_analysis "yes"
+
+	1.4. if you want to do analysis including analysis related to overlap (comparison between SCINPAS-induced PAS and pre-exsting catalog): 
+	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --overlap "yes"
+
+	1.5. if you want to do all analysis: 
+	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes"
+
+2. Running human samples:
+
+	2.1. if you do not want to run analysis:
+	./nextflow run main.nf -profile slurm -resume --sample_type "human"
+
+	2.2. if you want to do analysis but not (cell type specific and overlap analysis): 
+	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" 
+
+	2.3. if you want to do analysis including cell type specific analysis: 
+	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --cell_type_analysis "yes"
+
+	2.4. if you want to do analysis including analysis related to overlap (comparison between SCINPAS-induced PAS and pre-exsting catalog): 
+	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --overlap "yes"
+
+	2.5. if you want to do all analysis: 
+	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" --cell_type_analysis "yes" --overlap "yes"
+
+3. background running of the pipeline:
+	
+	By default, nextflow displays progression report to the screen. If you do not want that,
+	you can run "nohup" parameter so that progresison report is saved in the log file. Example command line is: 
+
+	nohup ./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --overlap "yes" 
+
+4. Note:
+	
+	Running SCINPAS pipeline on the login node is not recommended despite it assign jobs to computing node.
+	This is because nexflow displays progression report on the screen which can consume i/o extensively on the login node.
+	Hence, it is recommended to login to computing node and run the pipeline there.
 
 For more nextflow commandline parameter options, refer to this website: https://www.nextflow.io/docs/latest

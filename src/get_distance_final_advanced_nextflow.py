@@ -112,14 +112,14 @@ def get_d_for_polyA_reads(bed_dir, terminal_exons):
             cluster_start = int(line.split()[1])
             cluster_end = int(line.split()[2])
             cluster_id = line.split()[3]
-
+            score = int(line.split()[4])
             direction = line.split()[5]
             
             cs = int(cluster_id.split(':')[1])
             
             # subset terminal exon bed file (gtf) with overlapping span.
             filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)]
+                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
             
             if len(filtered_terminal_exons) >= 2:
                 print(filtered_terminal_exons)    
@@ -127,7 +127,7 @@ def get_d_for_polyA_reads(bed_dir, terminal_exons):
             are_minus = []
             # compute distance between terminal exon and current representative cleavage site
             # for each terminal exon
-            # this 'for' phrase is needed because a read can be mapped to more than 1 terminal exons of the same gene.
+            # this 'for' phrase is needed because a read can be mapped to more than 1 terminal exons of the same gene (or rarely different genes).
             # this can happen even if we only keep reads that are primarily aligned.
             # because of how 3'end sequencing is designed, terminal exon that gives minimal distance to a representative cleavage site
             # is the true terminal exon that the representative read actually maps to.
@@ -138,6 +138,11 @@ def get_d_for_polyA_reads(bed_dir, terminal_exons):
             
             # This condition is for negative control which is at the deduplicated level.
             if len(distances) > 0:
+                # According to definition of 3'end sequencing, the terminal exon that gives the shortest read-terminal exon distance
+                # is the true terminal that a read maps to.
+                # Hence min(distances) gives the distance between the true terminal exon and the read.
+                # This holds for even if reads map to multiple genes. The gene in which it has the shortest read-terminal exon distance
+                # is the true gene that a read maps to.
                 min_d = min(distances)
                 idx = distances.index(min(distances))
                 
@@ -149,8 +154,10 @@ def get_d_for_polyA_reads(bed_dir, terminal_exons):
                 # min_log_distance always >= 0
                 # add a pseudocount so that distance > 0
                 min_log_distance = math.log10(1 + min_distance)
-                
-                min_distances_distribution.append((min_distance, min_d_is_minus, min_log_distance))
+                # compute distance at the level of reads rather than at the level of clusters. 
+                # Create a list of distances as many as the number of reads that belong to the cluster.
+                partial_distances_list = [(min_distance, min_d_is_minus, min_log_distance)] * score
+                min_distances_distribution += partial_distances_list
             
     return min_distances_distribution
 

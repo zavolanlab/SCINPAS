@@ -374,7 +374,7 @@ def get_colsum_list(data, motives):
     
     return col_sums_list
 
-def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
+def plot_all_motif_overlaid_plots(df, m_infos, file_template, up, fasta_F, down):
     """
     Parameters
     ----------
@@ -393,8 +393,8 @@ def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
         1st element of a tuple: motif name. e.g. AAUAAA
         2nd element of a tuple: length of a motif. e.g. 6
 
-    o_name : string
-        motif frequency plot output file name.
+    file_template : string
+        output file template
             
     up : int (positive integer)
         how many number of base pairs do we go upstream of fixed representative cleavage site?
@@ -455,7 +455,7 @@ def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
         
         # reduce df by removing rows that were used for plotting and the column (max_motif) used
         # reduce column as well. Otherwise, same motif can be used multiple times
-        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])]
+        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])].copy()
 
         print('succesfully reduced df')        
         motives_only.remove(max_motif)
@@ -468,11 +468,14 @@ def plot_all_motif_overlaid_plots(df, m_infos, o_name, up, fasta_F, down):
     plt.yticks(fontsize='x-large')
     plt.xlabel('bp upstream', fontsize = 'x-large')
     plt.ylabel('frequency', fontsize = 'x-large')
+        
+    plt.rcParams['font.family'] = "DejaVu Sans"
     
-    plt.rcParams['font.family'] = "Arial"
+    file1 = file_template + "_overlaid.png"
+    file2 = file_template + "_overlaid.svg"
     
-    overlay_output = o_name + "_overlaid.png"
-    plt.savefig(overlay_output, bbox_inches='tight')   
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
  
 def get_all_scores(df, m_infos, o_name, up, fasta_F, down, peaks_dict):
     """
@@ -555,7 +558,7 @@ def get_all_scores(df, m_infos, o_name, up, fasta_F, down, peaks_dict):
         # You should reduce column as well. Otherwise, same motif can be used multiple times
         # df.columns.isin([max_motif]) returns True only if you are in that column, else False.
         # ~df.columns.isin([max_motif]) reverses the result of df.columns.isin([max_motif])
-        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])]
+        unused_df = df.loc[df[max_motif] == 0, ~df.columns.isin([max_motif])].copy()
         motives_only.remove(max_motif)
         
         df = unused_df

@@ -10,12 +10,34 @@ import pysam
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
 
 """
-Aim: plot 2 histograms of length of softclipped region.
-1 for before fixing alignment of soft clipped region.
-1 for after fixing alignment of soft clipped region.
+Aim1: plot a histograms of length of softclipped region.
+(before fixing alignment of soft clipped region)
+
+
+Aim2: save as a csv, % of reads with length of softclipped region between 1 and 3.
 """
+
+def write_out(row_data, o_file):
+    """
+    Parameters
+    ----------
+    row_data : list
+        A list that contains sample, total # of softclipped reads, # of reads with slength of softclipped region between 1 and 3., and its percentage
+    
+    o_file : string
+        output csv file name    
+
+    Returns
+    -------
+    returns nothing but saves the output in csv format.
+    """
+    
+    w = csv.writer(open(o_file, "w"))
+    w.writerow(row_data)
+    
 def get_read_properties(each_read):
     """
     Parameters
@@ -91,7 +113,12 @@ def get_softclipped(read, use_fc):
             difference = OCS - FCS
               
             size_softclip = left_end[1] - difference
-        return size_softclip
+            
+        if size_softclip == 0:
+            return "no_softclipped"
+        
+        elif size_softclip > 0:
+            return size_softclip
         
     # if mapping to foward direction and have a soft-clipped region
     elif rev == False and right_end[0] == 4:
@@ -105,7 +132,12 @@ def get_softclipped(read, use_fc):
             difference = FCS - OCS
                     
             size_softclip = right_end[1] - difference
-        return size_softclip
+            
+        if size_softclip == 0:
+            return "no_softclipped"
+        
+        elif size_softclip > 0:
+            return size_softclip
         
     # in this case, it does not have a soft-clipped region. should not consider these reads
     else:
@@ -155,6 +187,41 @@ def get_mean(scores_list):
     mean_val = np.mean(scores_list) 
     return mean_val
 
+def plot_histogram_alone(file_template, distribution_unfixed):
+    """
+    Parameters
+    ----------
+    file_template : string
+        output file template
+        
+    distribution_unfixed : list
+        a list of length of soft clipped regions for all reads (before fixing alignment of soft clipped region). 
+    
+    Returns
+    -------
+    Returns nothing but plots a histograms of length of softclipped region.
+    (before fixing alignment of soft clipped region)
+    """       
+    plt.figure()
+    plt.xticks(fontsize='x-large')
+    plt.yticks(fontsize='x-large')
+    plt.xlabel('size of softclipped region', fontsize = 'x-large')
+    plt.ylabel('frequency', fontsize = 'x-large')
+            
+    bins = np.arange(min(distribution_unfixed), max(distribution_unfixed), 1)
+                     
+    plt.hist(distribution_unfixed, bins = bins, histtype='bar', color ='b', ec = 'blue', fc = 'None') 
+                              
+    plt.yscale("log") 
+    
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
+    
 def plot_histogram(file, distribution_fixed, distribution_unfixed):
     """
     Parameters
@@ -184,15 +251,9 @@ def plot_histogram(file, distribution_fixed, distribution_unfixed):
         
     bins = np.arange(min(min(distribution_fixed), min(distribution_unfixed)), max(max(distribution_fixed), max(distribution_unfixed)), 1)
                      
-    plt.hist(distribution_unfixed, bins = bins, histtype='bar', label = "unfixed", color ='b', ec = 'b', fc = 'None') 
-    plt.hist(distribution_fixed, bins = bins, histtype='bar', label = "fixed", color = 'gold', ec= 'gold', fc = 'None')
-    
-#    mean_unfixed = get_mean(distribution_unfixed)
-#    mean_fixed = get_mean(distribution_fixed)
-    
-#    title = 'size of softclippped (unfixed): ' + str(mean_unfixed) +'\n' + 'size of softclippped (fixed): ' + str(mean_fixed)
-#    plt.title(label = title, fontsize = 'x-large')
-    
+    plt.hist(distribution_unfixed, bins = bins, histtype='bar', color ='b', ec = 'blue', fc = 'None') 
+    plt.hist(distribution_fixed, bins = bins, histtype='bar', color = 'gold', ec= 'gold', fc = 'None')
+                              
     plt.legend(loc="upper right")
     plt.yscale("log") 
     
@@ -221,17 +282,36 @@ def run_process():
     samFile, file_name =  get_inputs()
     print('successfully got inputs')
     
-    soft_clipped_fixed_list = get_softclipped_distribution(samFile, True)
-    print('successfully got a distribution of soft clipped region with a fixed cleavage site')
-    print("soft_clipped_fixed_list: " + str(soft_clipped_fixed_list))
+    # soft_clipped_fixed_list = get_softclipped_distribution(samFile, True)
+    # print('successfully got a distribution of soft clipped region with a fixed cleavage site')
+    # print("soft_clipped_fixed_list: " + str(soft_clipped_fixed_list))
     
     soft_clipped_unfixed_list = get_softclipped_distribution(samFile, False)
     print('successfully got a distribution of soft clipped region with an unfixed cleavage site')
-    print("soft_clipped_unfixed_list: " + str(soft_clipped_fixed_list))
+    print("soft_clipped_unfixed_list: " + str(soft_clipped_unfixed_list))
     
-    plot_histogram(file_name, soft_clipped_fixed_list, soft_clipped_unfixed_list)
-    print('successfully got plot histogram')
-        
+    # assert(len(soft_clipped_fixed_list) == len(soft_clipped_unfixed_list))
+    
+    # plot_histogram(file_name, soft_clipped_fixed_list, soft_clipped_unfixed_list)
+    # print('successfully got plot histogram')
+    
+    plot_histogram_alone(file_name, soft_clipped_unfixed_list)
+    
+    total = len(soft_clipped_unfixed_list)
+    # collect the number of reads with length of softclipped region between 1 and 3.
+    subset = [1 if elem >= 1 and elem <= 3 else 0 for elem in soft_clipped_unfixed_list]
+    len_subset = sum(subset)
+    
+    percentage = (len_subset * 100)/total
+    
+    sample_name = '_'.join(file_name.split('_')[0:3])
+    
+    row = [sample_name, total, len_subset, percentage]
+    
+    file_name2 = sample_name + "_subset_percentage.csv"
+    write_out(row, file_name2)
+    print('successfully got percentage of reads which have softclipped length between 1 and 3')
+    
 if __name__ == "__main__":
     run_process()
     print('success')

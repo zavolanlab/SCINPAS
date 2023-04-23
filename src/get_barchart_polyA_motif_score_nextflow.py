@@ -67,7 +67,7 @@ def autolabel(rects, ax):
                 '%d' % float(height),
                 ha='center', va='bottom')
         
-def plot_bar (names, counts, file_name):
+def plot_bar (names, counts, file_template):
     """
     Parameters
     ----------
@@ -78,8 +78,9 @@ def plot_bar (names, counts, file_name):
     counts : list
         a list that contains motif scores of each sample.
     
-    file_name : string
-        output barchart name.
+    file_template : string
+        output file template
+        
     Returns
     -------
     returns nothing but draws a barchart of motif scores from different samples.
@@ -99,8 +100,13 @@ def plot_bar (names, counts, file_name):
         
     plt.yticks(fontsize='x-large')
     plt.ylabel('motif scores', fontsize = 'x-large')
-    plt.rcParams['font.family'] = "Arial"
-    plt.savefig(file_name, bbox_inches='tight')
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
 
 def get_inputs():
     

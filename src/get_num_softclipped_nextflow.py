@@ -54,13 +54,36 @@ def count_softclipped_reads(samFile):
     """
     softclipped_count = 0
     for read in samFile.fetch():
+        rev = read.is_reverse
         tuples = read.cigartuples
         left_end = tuples[0]
         right_end = tuples[-1]
         
-        if left_end[0] == 4 or right_end[0] == 4:
-            softclipped_count += 1
+        if rev == True and left_end[0] == 4:
+            OCS = int(read.get_tag('XO'))
+            FCS = int(read.get_tag('XF'))
+            difference = FCS - OCS
+            size_softclip = left_end[1] - difference
+            
+            if size_softclip == 0:
+                print('no softclipped reads')
+                
+            elif size_softclip > 0:
+                softclipped_count += 1
         
+        elif rev == False and right_end[0] == 4:
+            OCS = int(read.get_tag('XO'))
+            FCS = int(read.get_tag('XF'))
+            difference = FCS - OCS
+                    
+            size_softclip = right_end[1] - difference            
+            
+            if size_softclip == 0:
+                print('no softclipped reads')
+                
+            elif size_softclip > 0:
+                softclipped_count += 1          
+            
         else:
             print('not softclipped read')
             continue

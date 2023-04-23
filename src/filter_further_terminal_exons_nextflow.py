@@ -48,7 +48,7 @@ def filter_further_terminal_exons(df):
     result_df : dataframe
         dataframe that only contains terminal exons with transcript support level <= 3.
     """
-    result_df = df[df['score'] <= 3]
+    result_df = df[df['score'] <= 3].copy()
     print(str(result_df))
     return result_df
 

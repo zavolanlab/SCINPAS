@@ -54,6 +54,9 @@ def change_class_name(class_type):
 
     elif class_type == 12:
         modified_class_name = "PATR"   
+
+    elif class_type == 14:
+        modified_class_name = "TE"   
         
     return modified_class_name
    
@@ -92,7 +95,7 @@ def num_polyA(bed_input, threshold):
     """            
     bed = pd.read_csv(bed_input, delimiter = '\t', header = None)
     bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
-    filtered_bed = bed[bed['score'] >= threshold]
+    filtered_bed = bed[bed['score'] >= threshold].copy()
     
     num_polyA = len(filtered_bed)
     

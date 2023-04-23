@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 import argparse
 import seaborn as sns
 import math
-
-
+import statistics
+import csv
+import scipy
 
 
 
@@ -21,8 +22,27 @@ Aim1 : To plot sns KDE and REG of avg distances between start of terminal exon t
 Aim2 : To plot histogram of avg distances between start of terminal exon to representative cleavage site of pA site in type1 vs type2.
 Aim3 : To plot cumulative histogram of ratio of avg distances between type1 and type2. (log2(avg_d1/avg_d2))
 where distance is a distance between start of terminal exon to representative cleavage site of pA site.
+Aim4 : compute how many genes have log ratio(cell_type1/cell_type2) > 0.
 """
-def plot_cumul_histogram(distances_df, file, t1, t2):
+def write_csv(row_data, o_file):
+    """
+    Parameters
+    ----------
+    row_data : list
+        A list that contains title and how many genes have log ratio(cell_type1/cell_type2) > 0.
+    
+    o_file : string
+        output csv file name    
+
+    Returns
+    -------
+    returns nothing but saves the output in csv format.
+    """
+    
+    w = csv.writer(open(o_file, "w"))
+    w.writerow(row_data)
+    
+def plot_cumul_histogram(distances_df, file_template, t1, t2):
     """
     Parameters
     ----------
@@ -30,8 +50,8 @@ def plot_cumul_histogram(distances_df, file, t1, t2):
         1st column : a list of distances between start of terminal exon to representative cleavage site of pA site in type 1 cell.
         2nd coluimn : a list of distances between start of terminal exon to representative cleavage site of pA site in type 2 cell.
                 
-    file : string
-        histogram plot file name
+    file_template : string
+        output file template
         
     t1 : string
         type1 cell name
@@ -41,7 +61,13 @@ def plot_cumul_histogram(distances_df, file, t1, t2):
 
     Returns
     -------
-    returns nothing but plots a cumulative histogram of distances between terminal exon start to representative cleavage site of pA site in type1 vs type2.
+    plots a cumulative histogram of distances between terminal exon start to representative cleavage site of pA site in type1 vs type2.
+    
+    total_num_genes : int
+        total number of genes that are expressed in both type 1 cell and type 2 cell.
+        
+    num_bigger_than_zero : int
+        the number of genes that have log ratio(cell_type1/cell_type2) > 0.
     """   
     plt.figure()
     pre_x = distances_df[t1]
@@ -52,19 +78,36 @@ def plot_cumul_histogram(distances_df, file, t1, t2):
     assert(len(x)==len(y))
 
     log_ratio_x_y = [math.log2((x[i]+1)/(y[i]+1)) for i in range(len(x))]
-    bins = np.linspace(min(log_ratio_x_y), max(log_ratio_x_y), 100)
+        
+    bigger_than_one = [1 if elem >= 1 else 0 for elem in log_ratio_x_y]
+    
+    smaller_than_minus_one = [1 if elem <= -1 else 0 for elem in log_ratio_x_y]
+    
+    total_num_genes = len(log_ratio_x_y)
+    num_bigger_than_one = sum(bigger_than_one)
+    num_smaller_than_minus_one = sum(smaller_than_minus_one)
     
     ratio_label = t1 + "/" + t2
-    plt.hist(log_ratio_x_y, bins = bins, histtype = "step", cumulative = True, density = True, label = ratio_label, ec = 'blue', fc = 'None')
+    sns.kdeplot(data = log_ratio_x_y, cumulative = True, label = ratio_label)
+    
     plt.xticks(fontsize='x-large')
     plt.yticks(fontsize='x-large')
     plt.xlabel('log2 fold change', fontsize = 'x-large')
     plt.ylabel('frequency', fontsize = 'x-large')
+   
+    plt.legend(bbox_to_anchor=(0, 1.1), loc="upper left")    
     
-    plt.rcParams['font.family'] = "Arial"
-    plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")    
+    plt.axvline(x = 0, color = 'black')
     
-    plt.savefig(file, bbox_inches='tight')
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
+    
+    return total_num_genes, num_bigger_than_one, num_smaller_than_minus_one
     
 def plot_histogram(distances_df, file, t1, t2):
     """
@@ -202,9 +245,16 @@ def run_process():
     print('successfully plotted histogram')
     
     # cumulative distribution plot (histogram)
-    out_name4 = output_template + "cumul_HIST.png"
-    plot_cumul_histogram(distance_csv, out_name4, type1, type2)
-    print('successfully plotted cumulative histogram')    
+    out_name4 = output_template + "cumul_HIST"
+    total_num_genes, num_bigger_than_one, num_smaller_than_minus_one = plot_cumul_histogram(distance_csv, out_name4, type1, type2)
+    bigger_percentage = (num_bigger_than_one * 100)/total_num_genes
+    smaller_percentage = (num_smaller_than_minus_one * 100)/total_num_genes
+    print('successfully plotted cumulative histogram')   
+    
+    out_name5 = output_template + "ratio_bigger_than_zero.csv"    
+    row = ["log(t1/t2) > 0: ", total_num_genes, num_bigger_than_one, bigger_percentage, num_smaller_than_minus_one, smaller_percentage]
+    write_csv(row, out_name5)   
+    print('successfully saved how many of them have log ratio > 0')    
     
 if __name__ == "__main__":
     run_process()

@@ -18,7 +18,7 @@ import pandas as pd
 """
 Aim : plot a nucleotide logo of PWM of a fixed length of softclipped region.
 """
-def plot_logo(dataframe, out_file):
+def plot_logo(dataframe, file_template):
     """
     Parameters
     ----------
@@ -30,8 +30,8 @@ def plot_logo(dataframe, out_file):
         new_df.loc[i, j] means normalized frequency of nucleotide j happening at position i.
         summing new_df.loc[i, j] over all nucleotides j at a given position returns 1. 
 
-    out_file : string
-        output figure file name.
+    file_template : string
+        output file template
         
     Returns
     -------        
@@ -43,7 +43,13 @@ def plot_logo(dataframe, out_file):
     plt.xlabel('position')
     plt.ylabel('frequency')
     
-    plt.savefig(out_file, bbox_inches='tight')
+    plt.rcParams['font.family'] = "DejaVu Sans"
+    
+    file1 = file_template + ".png"
+    file2 = file_template + ".svg"
+    
+    plt.savefig(file1, bbox_inches='tight')
+    plt.savefig(file2, bbox_inches='tight')
 
 def normalize_PWM(df):
     """
@@ -234,7 +240,7 @@ def run_process():
     normalized_df = normalize_PWM(total_frequency_df)
     print("successfully normalized the PWM")
     
-    out_name = pwm_signature + str(length_softclipped) + ".png"
+    out_name = pwm_signature + str(length_softclipped)
     
     plot_logo(normalized_df, out_name)
     print("successfully plot the PWM logo")

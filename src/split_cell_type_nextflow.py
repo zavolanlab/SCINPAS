@@ -39,9 +39,9 @@ def split_cell_type(df, cell_type, new_sample_name):
 
     """    
     # subset dataframe which has a specific cell type and a specific sample name
-    subset_df = df.loc[(df['cell_type'] == cell_type) & (df['sample'] == new_sample_name)]
+    subset_df = df.loc[(df['cell_type'] == cell_type) & (df['sample'] == new_sample_name)].copy()
     # collect 'CB' column only from the dataframe
-    final_df = subset_df[['CB']]
+    final_df = subset_df[['CB']].copy()
     
     return final_df
     

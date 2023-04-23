@@ -103,19 +103,24 @@ def separate_cluster(bed_dir, terminal_exons, threshold):
             
             # subset terminal exon bed file (gtf) with overlapping span.
             filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)]
+                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
             print(filtered_terminal_exons)
             distances = []
             # compute distance between terminal exon and current representative cleavage site
             # for each terminal exon
-            # this 'for' phrase is needed because a read can be mapped to more than 1 terminal exons of the same gene.
+            # this 'for' phrase is needed because a read can be mapped to more than 1 terminal exons of the same gene (or rarely different genes).
             # this can happen even if we only keep reads that are primarily aligned.
             # because of how 3'end sequencing is designed, terminal exon that gives minimal distance to a representative cleavage site
             # is the true terminal exon that the representative read actually maps to.
             for index, terminal_exon in filtered_terminal_exons.iterrows():
                 distance = get_distance(cs, terminal_exon, direction)
                 distances.append(distance)
-
+                
+            # According to definition of 3'end sequencing, the terminal exon that gives the shortest read-terminal exon distance
+            # is the true terminal that a read maps to.
+            # Hence min(distances) gives the distance between the true terminal exon and the read.
+            # This holds for even if reads map to multiple genes. The gene in which it has the shortest read-terminal exon distance
+            # is the true gene that a read maps to.
             min_d = min(distances)
             
             # check minimum distance with threshold.

@@ -16,7 +16,9 @@ directly from single 3'end RNA sequencing data.
   Please refer to this figure: 
   ![](analysis.png)
 
+	
 ## Requirements
+0) default directory is set as follows
 ![](directory.png)
 
 1) installation of nextflow and dependencies.
@@ -56,8 +58,8 @@ Type1 is the default cell type. e.g. spermatocyte.
 Type2 is cell type that you expect changes in average terminal exon length and/or the number of intronic polyA sites. e.g. elongating spermatid.
 This is only relevant if you do "cell_type_analysis". 
 
-**Note: folder structures/locations, gtf file and reference genome can be changed in the nextflow.config file. 
-However, input file format, gtf, fasta file and negative control should not be changed because
+**Note: folder structures/locations, gtf file, catalog, reference genome and result folder can be changed in the nextflow.config file. 
+However, input file format and negative control format should not be changed because
 downstream processes expect that name.**
 
 ## Command line

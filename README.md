@@ -67,7 +67,7 @@ downstream processes expect that name.**
 > Note: execution shown for slurm cluster. 
 > Create and select other profile as fit.
 
-Once you made a conda environment and activated the environment: traverse into src folder and run the nextflow command as follows:
+Once you made a conda environment and activated the environment, traverse into src folder and run the nextflow command as follows:
 
 1. Running mouse samples:
 

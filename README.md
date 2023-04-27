@@ -1,8 +1,8 @@
 # SCINPAS (Single Cell Identification of Novel PolyA Sites)
 
 ## Description
-SCINPAS is a nextflow pipeline that identifies previously known and noble polyA sites
-directly from single 3'end RNA sequencing data.
+SCINPAS is a nextflow pipeline that identifies previously known and novel polyA sites
+directly from single cell RNA sequencing data.
 
 ## Workflow
   ### general workflow

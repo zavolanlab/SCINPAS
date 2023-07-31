@@ -52,8 +52,11 @@ def convert_dict_to_df(cleavage_dictionary):
     cleavage_list = []
     for cleavage_id in cleavage_dictionary.keys():
         chrom = cleavage_id.split(':')[0]
-        end = cleavage_id.split(':')[1]
-        start = str(int(end) - 1)
+        cleavage_site = cleavage_id.split(':')[1]
+        start = str(int(cleavage_site) - 1)
+        end = str(int(cleavage_site))
+        # start = str(int(cleavage_site))
+        # end = str(int(cleavage_site) + 1)        
         score = cleavage_dictionary[cleavage_id]
         direction = cleavage_id.split(':')[2]
         

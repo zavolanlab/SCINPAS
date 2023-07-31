@@ -751,8 +751,7 @@ workflow polyA{
 		// plot histogram of length of softclipped region (before and after fixation).
 		(size_softclipped_dist_png, size_softclipped_dist_svg, percentage_csv) = GET_SOFTCLIPPED_DISTRIBUTION(fixed_dedup_sorted_full_bams_bais, params.sizeSoftclipped_out, params.get_softclipped_script)
 
-		//////////////////////////// num_polyA (number of polyA sites identified) ////////////////////////////
-		
+		//////////////////////////// num_polyA (number of polyA sites identified) ////////////////////////////	
 		// get number of polyA sites in each sample (using all polyA reads). + get the number of polyA sites/gene distribution in each sample.
 		num_polyA_csvs = GET_NUM_POLYA_SITES_ALLPOLYA(polyA_clustered_beds_sample_tuple,\
 		params.allPAS_num_polyA_csv, params.all_polyA_annotated, params.get_numA_polyA_script)
@@ -800,24 +799,6 @@ workflow polyA{
 		// combine total motif score csv file, total number of polyA sites csv file and total number of genes csv file together and make a barchart.
 		motif_score_and_numPAS_csv = FUSE_MOTIF_SCORE_NUM_PAS(total_motif_scores_csv, combined_motif_scores_polyA_level, all_combined_numPolyA_csv, params.numPAS_motifScore_csv, params.fuse_numPAS_motifscore_script)
 		
-		//////////////////////////// gene_coverage (number of genes covered by each sample) ////////////////////////////
-
-		// compute number of genes expressed by each sample and save it in each csv file. (includes negative control)
-		dedup_gene_coverage_csvs = GET_GENE_COVERAGE_DEDUP(fixed_dedup_sorted_full_bams_bais.mix(fixed_negative_control_dedup_full_bam_bai), params.dedup_gene_coverage_csv, terminal_exons_bed, "dedup", params.gene_coverage_script)
-		// compute number of genes covered by each sample and save it in each csv file. (includes negative control)
-		polyA_gene_coverage_csvs = GET_GENE_COVERAGE_POLYA(polyA_terminal_sorted_full_bams_bais.mix(polyA_terminal_sorted_full_control_bams_bais), params.polyA_gene_coverage_csv, terminal_exons_bed, "polyA", params.gene_coverage_script)
-		
-		// combine all csv files from each sample into a single csv file.
-		dedup_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_DEDUP(dedup_gene_coverage_csvs.collect(), params.combined_dedup_gene_coverage_csv)
-		polyA_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_POLYA(polyA_gene_coverage_csvs.collect(), params.combined_polyA_gene_coverage_csv)
-		
-		// total number of genes in a given species 
-		total_num_genes_csv = GET_TOTAL_NUM_GENES(terminal_exons_bed, params.total_num_genes_csv, params.sample_type, params.total_num_genes_script)
-		
-		// draw bar chart of gene coverage for all samples.
-		(coverage_barchart_png, coverage_barchart_svg) = GET_BAR_CHART_GENE_COVERAGE(dedup_combined_gene_coverage_csv, polyA_combined_gene_coverage_csv,\
-		total_num_genes_csv, params.geneCoverage_barchart, params.get_barchart_gene_coverage_script)
-
 		//////////////////////////// PWM_logo ////////////////////////////
 		// draw a logo of PWM of softclipped reads of length = 5, 6, 7, 8, 9, 10 separately.
 		// This is to see the frequency of "A" appearing in each position of softclipped region.
@@ -828,7 +809,27 @@ workflow polyA{
 		length_nine_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_NINE(fixed_dedup_sorted_full_bams_bais, 9, params.softclip_pwm_logo_script)
 		length_ten_PWM_logo = SOFTCLIP_PWM_LOGO_LENGTH_TEN(fixed_dedup_sorted_full_bams_bais, 10, params.softclip_pwm_logo_script)
 
-		// merged_cell_type
+		//////////////////////////// gene_coverage (number of genes covered by each sample) ////////////////////////////
+		if(params.g_coverage == "yes"){
+			// compute number of genes expressed by each sample and save it in each csv file. (includes negative control)
+			dedup_gene_coverage_csvs = GET_GENE_COVERAGE_DEDUP(fixed_dedup_sorted_full_bams_bais.mix(fixed_negative_control_dedup_full_bam_bai), params.dedup_gene_coverage_csv, terminal_exons_bed, "dedup", params.gene_coverage_script)
+			// compute number of genes covered by each sample and save it in each csv file. (includes negative control)
+			polyA_gene_coverage_csvs = GET_GENE_COVERAGE_POLYA(polyA_terminal_sorted_full_bams_bais.mix(polyA_terminal_sorted_full_control_bams_bais), params.polyA_gene_coverage_csv, terminal_exons_bed, "polyA", params.gene_coverage_script)
+			
+			// combine all csv files from each sample into a single csv file.
+			dedup_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_DEDUP(dedup_gene_coverage_csvs.collect(), params.combined_dedup_gene_coverage_csv)
+			polyA_combined_gene_coverage_csv = COMBINE_GENE_COVERAGE_POLYA(polyA_gene_coverage_csvs.collect(), params.combined_polyA_gene_coverage_csv)
+			
+			// total number of genes in a given species 
+			total_num_genes_csv = GET_TOTAL_NUM_GENES(terminal_exons_bed, params.total_num_genes_csv, params.sample_type, params.total_num_genes_script)
+			
+			// draw bar chart of gene coverage for all samples.
+			(coverage_barchart_png, coverage_barchart_svg) = GET_BAR_CHART_GENE_COVERAGE(dedup_combined_gene_coverage_csv, polyA_combined_gene_coverage_csv,\
+			total_num_genes_csv, params.geneCoverage_barchart, params.get_barchart_gene_coverage_script)
+		}
+
+		//////////////////////////// merged_cell_type ////////////////////////////
+		//////////////////////////// overlap_with_catalog ////////////////////////////
 		if(params.overlap == "yes"){
 			(polyA_bams, polyA_bais) = UNCOUPLE_BAM_WITH_SAMPLE(polyA_sorted_full_bams_bais_sample_only)
 			(all_samples_polyA_bam, all_samples_polyA_bai) = MERGE_ALL_SAMPLES(polyA_bams.collect(), polyA_bais.collect())
@@ -842,7 +843,7 @@ workflow polyA{
 			(top_score_PAS_catalog_overlap_barchart_png, top_score_PAS_catalog_overlap_barchart_svg) = GET_TOP_OVERLAP(all_samples_polyA_clustered_bed, params.get_top_overlap_script)
 		}		
 		
-		// cell_type_specific
+		//////////////////////////// cell_type_specific ////////////////////////////
 		if(params.cell_type_analysis == "yes"){
 			// prepare cell type annotation file (metadta)
 			if(params.sample_type == "mouse"){

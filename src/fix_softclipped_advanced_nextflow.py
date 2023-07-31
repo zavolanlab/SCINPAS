@@ -71,7 +71,23 @@ def write_output(final_reads, out_name, out_mode, sam):
         outfile.write(read)
 
 def find_trace_back(genome_Seq, read_softclipped, pos):
+    """
+    Parameters
+    ----------
+    genome_Seq : str
+        Reference genomic sequence corresponds to soft-clipped region of a read
+        
+    read_softclipped : str
+        Sequence of softclipped region of a read
     
+    pos : int
+        how much you go towards 3' to extend mapped part of a read (corrected position)
+
+    Returns
+    -------
+    trace_back : int
+        how much bp you go towards 5' to get a fixed cleavage site.
+    """    
     # because you revert sequences, you also revert position
     corrected_pos = len(genome_Seq) - 1 - pos
     genome_Seq = [elem for elem in genome_Seq]
@@ -258,11 +274,20 @@ def extract_sequences(Read, fasta):
         # start_point should be smaller than the end_point to extract genomic sequence
         end_point = int(refStart) - 1
         start_point = int(refStart)  - left_end[1]
-        
+                
         genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
         read_softclipped = full_sequence[0 : left_end[1]]
-        print("read softclipped (-) is: " + str(read_softclipped))
-        print("genomic_sequence is: " + str(genome_sequence))
+        # print("read softclipped (-) is: " + str(read_softclipped))
+        # print("genomic_sequence is: " + str(genome_sequence))
+        print('chromosome: ' + str(chromosome))
+        print('direction: ' + str(rev))
+        # print('refEnd: ' + str(refEnd))
+        print('refStart: ' + str(refStart))
+        if Read.has_tag('UR') and Read.has_tag('CB'):
+            umi = Read.get_tag('UR')
+            cb = Read.get_tag('CB')
+            print('umi: ' + str(umi))
+            print('cb: ' + str(cb))
         threshold = max(left_end[1]/10, 2)
         
     elif rev == False and right_end[0] == 4:
@@ -273,8 +298,17 @@ def extract_sequences(Read, fasta):
         
         genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
         read_softclipped = full_sequence[len(full_sequence) - right_end[1] : len(full_sequence)]
-        print("read softclipped is (+) : " + str(read_softclipped))
-        print("genomic_sequence is: " + str(genome_sequence))
+        # print("read softclipped is (+) : " + str(read_softclipped))
+        # print("genomic_sequence is: " + str(genome_sequence))
+        print('chromosome: ' + str(chromosome))
+        print('direction: ' + str(rev))
+        print('refEnd: ' + str(refEnd))
+        # print('refStart: ' + str(refStart))  
+        if Read.has_tag('UR') and Read.has_tag('CB'):
+            umi = Read.get_tag('UR')
+            cb = Read.get_tag('CB')
+            print('umi: ' + str(umi))
+            print('cb: ' + str(cb))        
         threshold = max(right_end[1]/10, 2)
         
     return genome_sequence, read_softclipped, threshold
@@ -312,6 +346,7 @@ def fix_soft_clipped(sam, fasta_file):
         tuples = read.cigartuples
         left_end = tuples[0]
         right_end = tuples[-1]
+        chrom = read.reference_name
         
         # soft clipped read. candidate for being corrected.
         if rev == True and left_end[0] == 4:
@@ -319,9 +354,8 @@ def fix_soft_clipped(sam, fasta_file):
             n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
             
             cleavage_site = int(refStart)
-            # fixed_cleavage_site = cleavage_site - n_proceed - 1
             fixed_cleavage_site = cleavage_site - n_proceed
-            
+
             if cleavage_site_fixed == True:
                 num_fixed += 1
             
@@ -333,14 +367,14 @@ def fix_soft_clipped(sam, fasta_file):
         elif rev == True and left_end[0] != 4:            
             cleavage_site = int(refStart)
             fixed_cleavage_site = cleavage_site
-       
+            
         # soft clipped read. candidate for being corrected.
         elif rev == False and right_end[0] == 4:
             genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)          
             n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
             
             cleavage_site = int(refEnd)
-            # fixed_cleavage_site = cleavage_site + n_proceed + 1
+            
             fixed_cleavage_site = cleavage_site + n_proceed
             
             if cleavage_site_fixed == True:
@@ -353,17 +387,16 @@ def fix_soft_clipped(sam, fasta_file):
         # because there isnt a thing to extend mapped region.        
         elif rev == False and right_end[0] != 4:          
             cleavage_site = int(refEnd)
-            fixed_cleavage_site = cleavage_site 
-                               
-        # correct cleavage site and fixed cleavage site:
-        # because bam file is 0-index based whilst pysam and bed files are 1-index based.
-        # if you want to save it in bam file, you have to add 1bp in cleavage site and fixed cleavage site.
-        # it applies to both + and - strand.
-        cleavage_site += 1
-        fixed_cleavage_site += 1
+            fixed_cleavage_site = cleavage_site
+                
+        # Note: BAM and BED are 0-index based. whilst IGV is 1-index based.
+        # You need to be aware that final_fixed_cleavage_site is 1bp off in the IGV.
+        # e.g. cs = 25 means 26 in IGV.
+        
         # save the original and fixed cleavage site into OC and FC tag respectively.     
         read.set_tag("XO", cleavage_site)
-        read.set_tag("XF", fixed_cleavage_site)        
+        read.set_tag("XF", fixed_cleavage_site)   
+
         changed_reads.append(read)
             
     return changed_reads, num_fixed, num_unfixed

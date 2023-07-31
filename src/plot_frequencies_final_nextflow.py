@@ -43,7 +43,7 @@ def draw_lineGraphs(As, Ts, Gs, Cs, file_template, window):
     returns nothing but plots of A/T/G/C frequency plot of a specific class in a specific sample.
     """         
     plt.figure()
-    x = np.arange(-(window/2) + 1, (window/2) + 1, 1)
+    x = np.arange(-window, window + 1, 1)
     plt.plot(x, As, label = 'A frequency')
     plt.plot(x, Ts, label = 'T frequency')
     plt.plot(x, Gs, label = 'G frequency')
@@ -121,7 +121,8 @@ def update_frequency_matrix(sequence, winDow):
         4th row : frequency of "C" from -99 to 100bp of a cleavage site.        
         
     """     
-    matrix = np.zeros((4, winDow))
+    full_Range = (2 * winDow) + 1
+    matrix = np.zeros((4, full_Range))
     for i in range(len(sequence)):
         nucleotide = sequence[i]
         if nucleotide == 'A':
@@ -135,6 +136,31 @@ def update_frequency_matrix(sequence, winDow):
             
     return matrix
 
+def reverse_complement(sequence):
+    """
+    Parameters
+    ----------
+    sequence : str
+        a reference DNA sequence. (+ strand)
+
+    Returns
+    -------
+    reverse_complemented_seq : str
+        a reverse complemented sequence. (- strand)
+    """
+    
+    # complement strand
+    # change into small letter to avoid changing nt wrong.
+    reverse_complemented_seq = sequence.replace("A", "t").replace("C", "g").replace("T", "a").replace("G", "c")
+    
+    # change back to upper case
+    reverse_complemented_seq = reverse_complemented_seq.upper()
+    
+    # reverse strand
+    reverse_complemented_seq = reverse_complemented_seq[::-1]
+    
+    return reverse_complemented_seq
+            
 def make_frequency_matrix(bed_directory, fasta, window):
     """
     Parameters
@@ -158,7 +184,8 @@ def make_frequency_matrix(bed_directory, fasta, window):
         3rd row : frequency of "G" from -99 to 100bp of a cleavage site.
         4th row : frequency of "C" from -99 to 100bp of a cleavage site.
     """        
-    frequency_matrix = np.zeros((4, window))
+    full_range = (2 * window) + 1
+    frequency_matrix = np.zeros((4, full_range))
     # for all clusters in a bed file
     with open(bed_directory, "r") as t:
         for line in t:
@@ -166,13 +193,21 @@ def make_frequency_matrix(bed_directory, fasta, window):
             chromosome = cluster_id.split(':')[0]
             # read_end = the most frequent cleavage sites = "true" cleavage site
             read_end = cluster_id.split(':')[1]
+            direction = cluster_id.split(':')[2]
             
-            start_ind = int(read_end) - (window/2) + 1
-            end_ind = int(read_end) + window/2   
+            start_ind = int(read_end) - window
+            end_ind = int(read_end) + window 
             # get genomic sequence
             # end should be + 1 to include the 100th nucleotide
             seq = fasta.fetch(reference = chromosome, start = start_ind, end = end_ind + 1)
-            temp_matrix = update_frequency_matrix(seq, window)
+            
+            if direction == '+':
+                corrected_seq = seq
+            
+            elif direction == '-':
+                corrected_seq = reverse_complement(seq)
+                
+            temp_matrix = update_frequency_matrix(corrected_seq, window)
             
             copy_matrix = frequency_matrix.copy()
             frequency_matrix = np.add(copy_matrix, temp_matrix)
@@ -212,8 +247,10 @@ def get_args():
 def run_process():
 
     bed_dir, fasta_file, out_name, window_size = get_args()
-             
-    total_frequency_matrix = np.zeros((4, window_size))
+    
+    full_window = (2 * window_size) + 1
+    
+    total_frequency_matrix = np.zeros((4, full_window))
 
     frequency_matrix = make_frequency_matrix(bed_dir, fasta_file, window_size)
     print("successfully got full frquency matrix")

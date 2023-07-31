@@ -133,7 +133,7 @@ process DEDUP {
 		--bam_template ${specific_sample}_possorted_*.bam \
 		--out_template ${specific_sample}_${params.dedup_out_name_prefix}\
 		--span_threshold ${params.span_threshold}\
-		--split_read_template ${specific_sample}_${params.split_out_name_prefix}	
+		--split_read_template ${specific_sample}_${params.split_out_name_prefix}
 	"""
 }
 
@@ -246,7 +246,7 @@ process MERGE_CONTROL{
 process TRIM_NEG_CONTROL {
 
 	label "custom_python"
-	label "middle_memory"
+	label "super_heavy_computation"
 	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/trimming_and_deduplication", mode: 'copy'
 
 	input:
@@ -539,7 +539,7 @@ process PERFORM_CLUSTERING_TUPLE{
 	--out ${specific_sample}_${clustered_bed}\
 	--du ${params.cluter_up}\
 	--dd ${params.cluster_down}\
-	--c ${params.num_cores}
+	--c ${params.num_cores_clustering}
 	"""
 }
 
@@ -562,7 +562,13 @@ process BED_INTERSECT_TUPLE{
 	"""
 	input=\$(basename ${clustered_bed_file})
 	prefix=\$(echo \$input | cut -d '_' -f 1-3)
-	bedtools intersect -s -u -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > \${prefix}_${intersect_out_name}.bed
+	# bedtools intersect -s -u -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > \${prefix}_${intersect_out_name}.bed
+	
+	# window by default reports both A and B if "extended" entry of A overlap with entry of B.
+	# -w 1 extend 1bp on both direction
+	# -sm means report overlap on the same strand.
+	# -u means report A only once if extended entry of A overlap with entry of B.
+	bedtools window -w 1 -sm -u -a ${clustered_bed_file} -b ${bed} > \${prefix}_${intersect_out_name}.bed
 	"""
 }
 
@@ -585,7 +591,8 @@ process BED_NO_INTERSECT_TUPLE{
 	"""
 	input=\$(basename ${clustered_bed_file})
 	prefix=\$(echo \$input | cut -d '_' -f 1-3)
-	bedtools intersect -s -v -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > \${prefix}_${no_intersect_out_name}.bed
+	# bedtools intersect -s -v -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > \${prefix}_${no_intersect_out_name}.bed
+	bedtools window -w 1 -sm -v -a ${clustered_bed_file} -b ${bed} > \${prefix}_${no_intersect_out_name}.bed
 	"""
 }
 
@@ -784,6 +791,7 @@ process SORT_PHASE3{
 process GET_A_FREQ_IN_NONSOFTCLIP{
 
 	label "custom_python"
+	label "middle_memory"
 	publishDir "${params.folder_template}/result/${params.result_folder}/${specific_sample}/get_A_freq_in_nonsoftclipped_reads", mode: 'copy'
 	
 	input:
@@ -1632,7 +1640,7 @@ process PERFORM_CLUSTERING_CELL_TYPE{
 	--out ${clustered_bed}\
 	--du ${params.cluter_up}\
 	--dd ${params.cluster_down}\
-	--c ${params.num_cores}
+	--c ${params.num_cores_clustering}
 	"""
 }
 
@@ -1653,7 +1661,8 @@ process BED_INTERSECT_CELL_TYPE{
 	
 	script:
 	"""
-	bedtools intersect -s -u -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > ${type}_${intersect_out_name}.bed
+	# bedtools intersect -s -u -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > ${type}_${intersect_out_name}.bed
+	bedtools window -w 1 -sm -u -a ${clustered_bed_file} -b ${bed} > ${type}_${intersect_out_name}.bed
 	"""
 }
 
@@ -1674,7 +1683,8 @@ process BED_NO_INTERSECT_CELL_TYPE{
 	
 	script:
 	"""
-	bedtools intersect -s -v -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > ${type}_${no_intersect_out_name}.bed
+	# bedtools intersect -s -v -nonamecheck -a ${clustered_bed_file} -b ${bed} -wa -bed > ${type}_${no_intersect_out_name}.bed
+	bedtools window -w 1 -sm -v -a ${clustered_bed_file} -b ${bed} > ${type}_${no_intersect_out_name}.bed
 	"""
 }
 
@@ -1866,7 +1876,7 @@ process PERFORM_CLUSTERING_ALL_SAMPLES{
 	--out all_${clustered_bed}\
 	--du ${params.cluter_up}\
 	--dd ${params.cluster_down}\
-	--c ${params.num_cores}
+	--c ${params.num_cores_clustering}
 	"""
 }
 
@@ -1890,7 +1900,7 @@ process GET_OVERLAP{
 	--catalog_dir ${params.gtf_fasta_location_template}/${params.sample_type}/${params.catalog}\
 	--overlap_barchart ${params.result_folder}_${params.overlap_catalog_figure}\
 	--species ${params.sample_type}\
-	--n_cores ${params.num_cores}\
+	--n_cores ${params.num_cores_overlap}\
 	--threshold ${params.cluster_threshold}
 	"""	
 }
@@ -1915,7 +1925,7 @@ process GET_TOP_OVERLAP{
 	--catalog_dir ${params.gtf_fasta_location_template}/${params.sample_type}/${params.catalog}\
 	--overlap_barchart ${params.result_folder}_${params.top_overlap_catalog_figure}\
 	--species ${params.sample_type}\
-	--n_cores ${params.num_cores}\
+	--n_cores ${params.num_cores_overlap}\
 	--threshold ${params.cluster_threshold}
 	"""	
 }

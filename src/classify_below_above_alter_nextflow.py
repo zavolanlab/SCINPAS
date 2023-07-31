@@ -134,18 +134,14 @@ def separate_polyAT(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             end_pos = filtered_bed['end'].values[0]
             direction = filtered_bed['strand'].values[0]
             c_id = filtered_bed['id'].values[0]
-            
-            # cluster_id = str(sequence_id) + str(':') + str(start_pos) + str(':') + str(end_pos) + str(':') + str(direction)\
-            # + str(':') + str(c_id)
-            # pA_id = polyA_cluster_id + '_' + cluster_id
-            
+                        
             pA_id = polyA_cluster_id
             # set sub-cluster ID
             read.set_tag("Zi", pA_id)
             # set boolean mark that specifies whether a read is located in both clusters or not. 
             # 0 -> a read is located in 1 cluster.
             # 1 -> a read is located in both clusters.
-            read.set_tag("Zd", str(0))
+            read.set_tag("Zd", 0)
             
             final_reads.append(read)
             
@@ -163,14 +159,10 @@ def separate_polyAT(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             direction = further_filtered_bed['strand']
             c_id = further_filtered_bed['id']
             
-            # cluster_id = str(sequence_id) + str(':') + str(start_pos) + str(':') + str(end_pos)\
-            # + str(':') + str(direction) + str(':') + str(c_id)
-            # pA_id = polyA_cluster_id + '_' + cluster_id
-            
             pA_id = polyA_cluster_id
             read.set_tag("Zi", pA_id)
             
-            read.set_tag("Zd", str(1))
+            read.set_tag("Zd", 1)
             
             final_reads.append(read)
         
@@ -234,8 +226,13 @@ def get_inputs():
     bam = pysam.AlignmentFile(bam_dir, "rb")
     
     input_bed_dir = args.input_bed
-    input_bed = pd.read_csv(input_bed_dir, delimiter = '\t', header = None)
-    input_bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
+    
+    try:
+        input_bed = pd.read_csv(input_bed_dir, delimiter = '\t', header = None)
+        input_bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
+    
+    except pd.errors.EmptyDataError:
+        input_bed = pd.DataFrame()
     
     use_fc = bool(args.use_fc)
     class_reads = args.class_reads
@@ -253,8 +250,14 @@ def run_process():
     
     all_polyAT_reads = bam_to_list(bam)
     print('successfully converted bam to a list')
+
+    if len(input_bed) == 0:
+        classified_reads = []
+        remaining_reads = all_polyAT_reads
     
-    classified_reads, remaining_reads = separate_polyAT(all_polyAT_reads, input_bed, use_fc, class_reads)
+    else:
+        classified_reads, remaining_reads = separate_polyAT(all_polyAT_reads, input_bed, use_fc, class_reads)
+    
     print('successfully separated reads')
 
     out_mode = "wb"

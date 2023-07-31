@@ -136,6 +136,8 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             potential_polyA = full_sequence[len(full_sequence) - left_end[1] + difference : len(full_sequence)]
             # length of a softclipped region
             len_pA = left_end[1] - difference
+            print('potential_polyA: ' + str(potential_polyA))
+            print('length: ' + str(len_pA))
             
         # you should use num_A not num_T because you use full_sequence rather than fasta.fetch()
         num_A = count_A(potential_polyA)
@@ -166,6 +168,8 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             potential_polyA = full_sequence[len(full_sequence) - right_end[1] + difference : len(full_sequence)]
             # length of a softclipped region
             len_pA = right_end[1] - difference
+            print('potential_polyA: ' + str(potential_polyA))
+            print('length: ' + str(len_pA))
             
         num_A = count_A(potential_polyA)
         percentage_A = (num_A/len_pA)*100

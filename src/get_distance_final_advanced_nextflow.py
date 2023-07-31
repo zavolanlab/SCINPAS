@@ -118,9 +118,11 @@ def get_d_for_polyA_reads(bed_dir, terminal_exons):
             cs = int(cluster_id.split(':')[1])
             
             # subset terminal exon bed file (gtf) with overlapping span.
-            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
-            
+#            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
+#                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
+
+            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end + 1)\
+                                                     & (terminal_exons['end'] >= cluster_start - 1) & (terminal_exons['strand'] == direction)].copy()            
             if len(filtered_terminal_exons) >= 2:
                 print(filtered_terminal_exons)    
             distances = []

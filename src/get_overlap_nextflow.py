@@ -122,9 +122,11 @@ def find_overlap_PAS(sample_bed, catalog_bed):
             score = int(row[4])
             direction = row[5]
             
-            overlapped_PAS = catalog_bed[(catalog_bed['seqid'] == chrom) & (catalog_bed['start'] <= cluster_end)\
-                                                     & (catalog_bed['end'] >= cluster_start) & (catalog_bed['strand'] == direction)].copy()
-            
+            # overlapped_PAS = catalog_bed[(catalog_bed['seqid'] == chrom) & (catalog_bed['start'] <= cluster_end)\
+            #                                          & (catalog_bed['end'] >= cluster_start) & (catalog_bed['strand'] == direction)].copy()
+
+            overlapped_PAS = catalog_bed[(catalog_bed['seqid'] == chrom) & (catalog_bed['start'] <= cluster_end + 1)\
+                                                     & (catalog_bed['end'] >= cluster_start - 1) & (catalog_bed['strand'] == direction)].copy()                
             if len(overlapped_PAS) == 0:    
                 no_overlap += 1
              

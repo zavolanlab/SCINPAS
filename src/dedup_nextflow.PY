@@ -11,7 +11,7 @@ import math
 import argparse
 
 """
-Aim 1 : Within a cluster of reads with same CB, UR tag and chromosome if span is too large, split a cluster into several sub-clusters
+Aim 1 : Within a cluster of reads with same CB and UR tag if span is too large, split a cluster into several sub-clusters
 and assign different UR tags (YB tag). (Assuming they had same UR by chance)
 
 Aim 2 : For a given CB, merge 2 clusters of reads that are nearby and have hamming distance = 1 in their UR tags.
@@ -20,7 +20,7 @@ the new UR tag is the one with the majority.
 After merging step, UR tags are saved in the UB tag.
 Note: we merge 2 clusters at a time.
 
-Aim 3 : deduplicate reads (remove PCR artefact) by choosing the most distal read amongst reads with same CB and UB tag same chromosome. (choosing a read that is closest to the terminal exon)
+Aim 3 : deduplicate reads (remove PCR artefact) by choosing the most distal read amongst reads with same CB and UB tag. (choosing a read that is closest to the terminal exon)
 This is to capture true polyA read.
 
 Aim 4 : save all reads from original bam file but a new tag YB tag attached.
@@ -32,9 +32,9 @@ def flatten_reads(splitted_dict):
     Parameters
     ----------
     splitted_dict: dictionary of a list
-        key = UR, start, end position and chromosome of a new cluster
+        key = UR, start and end position of a new cluster
         value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
-        e.g. splitted_dict = { (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4, r5], (UR1.2, (10^5, 10^5 + 500, chr1)):[r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
+        e.g. splitted_dict = { (UR1.1, (1, 5)):[r1, r2, r3, r4, r5], (UR1.2, (4, 25)):[r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
         
         NOTE: This splitted_dict is a dictionary for a given cell (CB).   
 
@@ -59,11 +59,11 @@ def get_splitted_reads(split_dicts, Cbs):
     """
     Parameters
     ----------
-    split_dicts: dictionary of a list10^5, 10^5 + 500
+    split_dicts: dictionary of a list
         1st key = CB
-        2nd key = UR, start, end position and chromosome of a new cluster
-        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag, start, end and chromosome).
-        e.g. {'cb1':{ (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4, r5], (UR1.2, (10^5, 10^5 + 500, chr1)):[r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
+        2nd key = UR, start and end position of a new cluster
+        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
+        e.g. {'cb1':{ (UR1, (1, 5)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500)):[r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
         
     Cbs : list
         a list that contains all unique cell-barcodes. 
@@ -132,17 +132,12 @@ def extract_spans(UR_and_spans):
         
     URs : list
         a list of URs of all sub-clusters.
-    
-    chroms : list
-        a list of choromosomes of all sub-clusters.
 
     """
     starts = [UR_and_span[1][0] for UR_and_span in UR_and_spans]
     ends = [UR_and_span[1][1] for UR_and_span in UR_and_spans]
     URs = [UR_and_span[0] for UR_and_span in UR_and_spans]
-    chroms = [UR_and_span[1][2] for UR_and_span in UR_and_spans]
-    
-    return starts, ends, URs, chroms
+    return starts, ends, URs
 
 
 def deduplication(new_dict):
@@ -151,14 +146,14 @@ def deduplication(new_dict):
     ----------
     new_dict : dictionary of a list
         same structure as splitted_dict but some sub-clusters are fused with a new key.                
-        key = UR, start, end position and chromosome of a new cluster
-        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag, start, end and chromosome).    
+        key = UR, start and end position of a new cluster
+        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).    
         Note: Since span is also part of the key, even if you have same CB and UR, if you have different spans, you consider as a different cluster.
         Hence if you have a cluster oF CB and UR that has too much distance, they are subdivided into different clusters and treated as different clusters (Same effect as using YB tag).
         
-        e.g. splitted_dict = { (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4, r5], (UR2, (4, 25, chr1)):[r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] } 
-        new_dict = {(UR1.1, (1, 25, chr1)):[r1, r2, r3, r4, r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18]}
-        Here, UR1.1 and UR2 overlap and assuming their hamming distance = 1 they are fused to a single cluster.
+        e.g. splitted_dict = { (UR1.1, (1, 5)):[r1, r2, r3, r4, r5], (UR1.2, (4, 25)):[r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] } 
+        new_dict = {(UR1.1, (1, 25)):[r1, r2, r3, r4, r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18]}
+        Here, UR1.1 and UR1.2 overlap and assuming their hamming distance = 1 they are fused to a single cluster.
         Since UR1.1 is the majority, the new cluster UR is UR1.1.
         Note that span is also changed because of fusion.
         
@@ -176,8 +171,7 @@ def deduplication(new_dict):
     # list_of_clusters_r = [[r1, r2, r3, r4, r5, r6, r7, r8], [r9, r10, r11, r12, r13, r14, r15, r16, r17, r18]]
     list_of_clusters_r = list(new_dict.values())
     UR_and_spans = list(new_dict.keys())
-    print("UR_and_spans: " + str(UR_and_spans))
-    starts, ends, URs, chroms = extract_spans(UR_and_spans)
+    starts, ends, URs = extract_spans(UR_and_spans)
     
     for i, cluster in enumerate(list_of_clusters_r):
         start_positions = []
@@ -255,7 +249,7 @@ def hamming_distance(UR1, UR2):
     
     return ham_dist
 
-def check_overlap (start1, end1, start2, end2, chromosome1, chromosome2):
+def check_overlap (start1, end1, start2, end2):
     """
     Parameters
     ----------
@@ -270,13 +264,7 @@ def check_overlap (start1, end1, start2, end2, chromosome1, chromosome2):
     
     end2 : int
         end position of a sub-cluster 2.
-    
-    chromosome1: str
-        chromosome of a sub-cluster 1.
-        
-    chromosome2: str
-        chromosome of a sub-cluster 2.
-        
+
     Returns
     -------
     is_overlap : bool
@@ -284,7 +272,7 @@ def check_overlap (start1, end1, start2, end2, chromosome1, chromosome2):
         True if a sub-cluster 1 overlaps with a sub-cluster 2.
         False if a sub-cluster 1 does not overlap with a sub-cluster 2.
     """
-    is_overlap = (start2 <= end1) and (end2 >= start1) and (chromosome1 == chromosome2)
+    is_overlap = (start2 <= end1) and (end2 >= start1)
     return is_overlap
 
 def extract(UR_and_span):
@@ -292,8 +280,8 @@ def extract(UR_and_span):
     Parameters
     ----------
     UR_and_span : a tuple
-        a tuple where it is made of UR, start, end position and chromosome of a sub-cluster.
-        e.g. (UR6, (0, 6, chr1))
+        a tuple where it is made of UR, start and end position of a sub-cluster.
+        e.g. (UR6, (0, 6))
 
     Returns
     -------
@@ -305,25 +293,21 @@ def extract(UR_and_span):
         
     end : int
         end position of a sub-cluster.
-    
-    chrom : str
-        chromosome in which a sub-cluster belongs to.
     """      
     UR = UR_and_span[0]
     start = UR_and_span[1][0]
-    end = UR_and_span[1][1]
-    chrom = UR_and_span[1][2]
+    end = UR_and_span[1][1]   
         
-    return UR, start, end, chrom
+    return UR, start, end
 
 def merge(splitted_dict):
     """
     Parameters
     ----------
     splitted_dict: dictionary of a list
-        key = UR, start, end position and chromosome of a new cluster
+        key = UR, start and end position of a new cluster
         value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
-        e.g. splitted_dict = { (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4, r5], (UR2, (4, 25, chr1)):[r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
+        e.g. splitted_dict = { (UR1.1, (1, 5)):[r1, r2, r3, r4, r5], (UR1.2, (4, 25)):[r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
 
     Returns
     -------
@@ -333,9 +317,9 @@ def merge(splitted_dict):
         1) hamming distance between 2 URs = 1
         2) 2 sub-clusters overlap.
     
-        e.g. splitted_dict = { (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4, r5], (UR2, (4, 25, chr1)):[r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] } 
-        new_dict = {(UR1.1, (1, 25, chr1)):[r1, r2, r3, r4, r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18]}
-        Here, UR1.1 and UR2 overlap and assuming their hamming distance = 1 they are fused to a single cluster.
+        e.g. splitted_dict = { (UR1.1, (1, 5)):[r1, r2, r3, r4, r5], (UR1.2, (4, 25)):[r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] } 
+        new_dict = {(UR1.1, (1, 25)):[r1, r2, r3, r4, r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18]}
+        Here, UR1.1 and UR1.2 overlap and assuming their hamming distance = 1 they are fused to a single cluster.
         Since UR1.1 is the majority, the new cluster UR is UR1.1.
         Note that span is also changed because of fusion.
         
@@ -343,8 +327,8 @@ def merge(splitted_dict):
     NOTE: This splitted_dict and new_dict are dictionary for a given cell (CB).
     """
     new_dict={}
-    # splitted_dicts = {'cb1':{ (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4], (UR1.2, (4, 25, chr1)):[r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
-    # splitted_dict = { (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4], (UR1.2, (4, 25, chr1)):[r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
+    # splitted_dicts = {'cb1':{ (UR1.1, (1, 5)):[r1, r2, r3, r4], (UR1.2, (4, 25)):[r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
+    # splitted_dict = { (UR1.1, (1, 5)):[r1, r2, r3, r4], (UR1.2, (4, 25)):[r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
     UR_and_spans = list(splitted_dict.keys())
     
     # For a given CB if you have only 1 UR cluster, then dont merge. just return the same thing.
@@ -353,9 +337,7 @@ def merge(splitted_dict):
         
     else:
         # use stable sort to get rid of randomness
-        # need to sort first by chromosome and then start and then end
-        # 1 element: (UR1.1, (1, 5, chr1)
-        sorted_UR_and_spans = sorted(UR_and_spans, key = lambda x: (x[1][2], x[1][0], x[1][1]))
+        sorted_UR_and_spans = sorted(UR_and_spans, key = lambda x: (x[1][0], x[1][1]))
         
         # reserve == 'not changed' means previous 2 clusters are not fused in the previous iteration.
         reserve = 'not changed'
@@ -370,11 +352,11 @@ def merge(splitted_dict):
                 UR_and_span1 = sorted_UR_and_spans[i]
                 
             UR_and_span2 = sorted_UR_and_spans[i+1]
-            print("UR_and_span1 is: " + str(UR_and_span1))
-            UR1, start1, end1, chrom1 = extract(UR_and_span1)
-            UR2, start2, end2, chrom2 = extract(UR_and_span2)
+            
+            UR1, start1, end1 = extract(UR_and_span1)
+            UR2, start2, end2 = extract(UR_and_span2)
                 
-            is_overlap = check_overlap(start1, end1, start2, end2, chrom1, chrom2)
+            is_overlap = check_overlap(start1, end1, start2, end2)
             ham_d = hamming_distance(UR1, UR2)
             
             # if reserve is changed to a new key it means previous 2 clusters are fused into 1 cluster(changed). 
@@ -393,8 +375,7 @@ def merge(splitted_dict):
             if is_overlap and ham_d == 1 :
     
                 if len(reads_C1) >= len(reads_C2):
-                    assert(chrom1 == chrom2)
-                    new_span = (min(start1, start2), max(end1, end2), chrom1)
+                    new_span = (min(start1, start2), max(end1, end2))
                     # need to change to a key with UR1 because UR1 is majority. 
                     # also you have a new 'merged' span.
                     new_key = (UR1, new_span)
@@ -426,8 +407,7 @@ def merge(splitted_dict):
                     
                     # need to change key with UR2 becuase UR2 is majority.
                     # also you have a new 'merged' span.
-                    assert(chrom1 == chrom2)
-                    new_span = (min(start1, start2), max(end1, end2), chrom2)
+                    new_span = (min(start1, start2), max(end1, end2))
                     new_key = (UR2, new_span)
                     
                     # delete reads in the old key if reads exist with old key (i.e. new_dict[UR_and_span] not empty)
@@ -467,8 +447,8 @@ def merge(splitted_dict):
                     new_dict[UR_and_span2] += reads_C2
                     
                 reserve = 'not changed'
-    # splitted_dict = { (UR1.1, (1, 5, chr1)):[r1, r2, r3, r4, r5], (UR1.2, (4, 25, chr1)):[r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }            
-    # new_dict = {(UR1.1, (1, 25, chr1)):[r1, r2, r3, r4, r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18]}
+    # splitted_dict = { (UR1.1, (1, 5)):[r1, r2, r3, r4, r5], (UR1.2, (4, 25)):[r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }            
+    # new_dict = {(UR1.1, (1, 25)):[r1, r2, r3, r4, r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18]}
     return new_dict
 
 def merge_two_dicts(x, y):
@@ -477,23 +457,23 @@ def merge_two_dicts(x, y):
     Parameters
     ----------
     x : dictionary of a list
-        key = UR, start, end position and chromosome of a new cluster
-        value =  a list where it contains all reads in a new sub-cluster (with same CB, UR tag, start, end and chromosome).
-        e.g. { (UR1, (1, 5, chr1)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500, chr1)):[r5, r6, r7, r8] }
+        key = UR, start and end position of a new cluster
+        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
+        e.g. { (UR1, (1, 5)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500)):[r5, r6, r7, r8] }
    
     y : dictionary of a list
-        key = UR, start, end position and chromosome of a new cluster
-        value =  a list where it contains all reads in a new sub-cluster (with same CB, UR tag, start, end and chromosome).
-        e.g. {(UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
+        key = UR, start and end position of a new cluster
+        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
+        e.g. {(UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
 
     Returns
     -------
     z : dictionary of a list
-        key = UR, start, end position and chromosome of a new cluster
-        value =  a list where it contains all reads in a new sub-cluster (with same CB, UR tag, start, end and chromosome).
+        key = UR, start and end position of a new cluster
+        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
         
         z refers to a new merged dictionary between x and y.
-        e.g. { (UR1, (1, 5, chr1)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500, chr1)):[r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }        
+        e.g. { (UR1, (1, 5)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500)):[r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }        
     """
     z = x.copy()
     z.update(y)
@@ -504,7 +484,7 @@ def get_span(cluster_p):
     Parameters
     ----------
     cluster_p : a list of tuple
-        a list of tuple where each element is start and end position of reads within a new sub-cluster (with same CB and UR tag and chromosome)
+        a list of tuple where each element is start and end position of reads within a new sub-cluster (with same CB and UR tag)
 
     Returns
     -------
@@ -521,7 +501,7 @@ def get_span(cluster_p):
     end = max(ends)
     return (start, end)
 
-def split(sorted_tuple_positions, start_positions, end_positions, threshold, sorted_reads, chromosome):
+def split(sorted_tuple_positions, start_positions, end_positions, threshold, sorted_reads):
     """
     Parameters
     ----------
@@ -540,20 +520,17 @@ def split(sorted_tuple_positions, start_positions, end_positions, threshold, sor
     
     sorted_reads :a list
         a list of reads with same CB and UR tags that are sorted by start and then end positions.
-    
-    chromosome: str
-        chromosome number
-        
+
     Returns
     -------
     dict_of_clusters_r : dictionary of list.
     
-        first key :  tuple of UR, start, end and chromosome of the new cluster. Each key represents a new sub-cluster. 
-        i.e. (UR, (new_cluster_start, new_cluster_end, new_cluster_chromosome))
+        first key :  tuple of UR, start and end of the new cluster. Each key represents a new sub-cluster. 
+        i.e. (UR, (new_cluster_start, new_cluster_end))
         
-        value : a list where it contains all reads in a new sub-cluster (with same CB, UR tag, start, end and chromosome).
+        value : a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
         
-        dict_of_clusters_r[('UR', (new_cluster_start, new_cluster_end, chromosome))] = [r19, r20, r21, r22, r23]
+        dict_of_clusters_r[('UR',  (new_cluster_start, new_cluster_end))] = [r19, r20, r21, r22, r23]
     """
     first_tuple = sorted_tuple_positions[0]
     min_start = first_tuple[0]
@@ -564,7 +541,11 @@ def split(sorted_tuple_positions, start_positions, end_positions, threshold, sor
     cluster_r = []
     span = max_end - min_start
     
-    logspan = math.log10(span + 1)    
+    if span == 0:
+        logspan = math.log10(1)
+    else:
+        logspan = math.log10(span)
+        
     # if logspan >= threshold, you need to split a cluster into subclusters at some point.
     if logspan >= threshold:
         k = 1
@@ -573,19 +554,23 @@ def split(sorted_tuple_positions, start_positions, end_positions, threshold, sor
             # if span is larger than threshold, no need to consider overlapping region
             # if span is larger than threshold, no need to consider if 2 reads have similar UR
             mini_span = end - min_start
-                        
-            mini_logspan = math.log10(mini_span + 1)
+            
+            if mini_span == 0:
+                mini_logspan = math.log10(1)
+            else:
+                mini_logspan = math.log10(mini_span)
+            
             if mini_logspan > threshold:
                 # Need to use UR of the previous read not current read because you are splitting until previous read and current read onward. 
                 # i-1 works because first element will not have mini_logspan > threshold.
                 UR = sorted_reads[i-1].get_tag('UR')
                 (new_cluster_start, new_cluster_end) = get_span(cluster_p)
 
-                # dict_of_clusters_r[('UR', (new_cluster_start, new_cluster_end, chromosome))] = [r19, r20, r21, r22, r23]
+                # dict_of_clusters_r[('UR',  (new_cluster_start, new_cluster_end))] = [r19, r20, r21, r22, r23]
                 # e.g. cluster_r =[r19, r20, r21, r22, r23]
-                if (UR, (new_cluster_start, new_cluster_end, chromosome)) not in dict_of_clusters_r.keys():
-                    dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end, chromosome))] = []
-                dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end, chromosome))] += cluster_r
+                if (UR,  (new_cluster_start, new_cluster_end)) not in dict_of_clusters_r.keys():
+                    dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end))] = []
+                dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end))] += cluster_r
                 
                 YB = UR + str(k)
                 k += 1
@@ -617,9 +602,9 @@ def split(sorted_tuple_positions, start_positions, end_positions, threshold, sor
         UR = sorted_reads[-1].get_tag('UR')
         (new_cluster_start, new_cluster_end) = get_span(cluster_p)
 
-        if (UR, (new_cluster_start, new_cluster_end, chromosome)) not in dict_of_clusters_r.keys():
-            dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end, chromosome))] = []
-        dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end, chromosome))] += cluster_r        
+        if (UR, (new_cluster_start, new_cluster_end)) not in dict_of_clusters_r.keys():
+            dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end))] = []
+        dict_of_clusters_r[(UR,  (new_cluster_start, new_cluster_end))] += cluster_r        
         
         YB = UR + str(k)
         [read.set_tag("YB", YB) for read in cluster_r]
@@ -631,11 +616,11 @@ def split(sorted_tuple_positions, start_positions, end_positions, threshold, sor
         UR = sorted_reads[0].get_tag('UR')
         (new_cluster_start, new_cluster_end) = get_span(sorted_tuple_positions)
         
-        if (UR, (new_cluster_start, new_cluster_end, chromosome)) not in dict_of_clusters_r.keys():
-            dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end, chromosome))] = []
+        if (UR,  (new_cluster_start, new_cluster_end)) not in dict_of_clusters_r.keys():
+            dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end))] = []
         
         # nothing to split. put every sorted reads in here    
-        dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end, chromosome))] += sorted_reads
+        dict_of_clusters_r[(UR, (new_cluster_start, new_cluster_end))] += sorted_reads
         
         YB = UR + str(k)
         [read.set_tag("YB", YB) for read in sorted_reads]
@@ -728,15 +713,15 @@ def purify_UR(reads_per_ub, unique_pairs, threshold):
     Parameters
     ----------
     reads_per_ub : a dictionary of dictionary
-    1st key : a tuple of CB, UR and chromosome.
+    1st key : a tuple of CB and UMI
     2nd key : 'reads'
-    value : a list of reads with the same CB and UR tag and a chromosome
+    value : a list of reads with the same CB and UR tag
         
     unique_pairs : a list of tuple
-        a list of tuple where each element is unique tuple of CB, UR and chromosome.
+        a list of tuple where each element is unique tuple of CB and UR tag.
     
     threshold : int
-        Span threshold for a cluster of reads (with same CB and UR tag and chromosome) to be considered as 1 cluster.
+        Span threshold for a cluster of reads (with same CB and UR tag) to be considered as 1 cluster.
           
     Returns
     -------
@@ -746,9 +731,9 @@ def purify_UR(reads_per_ub, unique_pairs, threshold):
     
     splitted_dicts: dictionary of a list
         1st key = CB
-        2nd key = UR, start, end position and chromosome of a new cluster
-        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag and chromosome).
-        e.g. {'cb1':{ (UR1, (1, 5, chr1)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500, chr1)):[r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
+        2nd key = UR, start and end position of a new cluster
+        value =  a list where it contains all reads in a new sub-cluster (with same CB and UR tag).
+        e.g. {'cb1':{ (UR1, (1, 5)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500)):[r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
         
     CBs : list
         a list that contains all unique cell-barcodes. 
@@ -757,7 +742,7 @@ def purify_UR(reads_per_ub, unique_pairs, threshold):
     list_c = ['I', 'D', 'N', 'S', 'H', 'P', 'X']
     splitted_dicts ={}
     # to avoid randomness, fixate it by stable sort
-    unique_pairs = sorted(unique_pairs, key = lambda x: (x[0], x[1], x[2]))
+    unique_pairs = sorted(unique_pairs, key = lambda x: (x[0], x[1]))
     
     for unique_pair in unique_pairs:
         read_list = reads_per_ub[unique_pair]['reads']
@@ -805,13 +790,12 @@ def purify_UR(reads_per_ub, unique_pairs, threshold):
         sorted_tuple_positions = [(sorted_tuple[0], sorted_tuple[1]) for sorted_tuple in sorted_positions_reads]
         # get sorted reads
         sorted_reads = [sorted_tuple[2] for sorted_tuple in sorted_positions_reads]
-        chrom = unique_pair[2]
         
-        # within same CB, UR tag and a chromosome. you have to add dictionary
-        splitted_per_ur = split(sorted_tuple_positions, start_positions, end_positions, threshold, sorted_reads, chrom)
+        # within same CB, UR tag. you have to add dictionary
+        splitted_per_ur = split(sorted_tuple_positions, start_positions, end_positions, threshold, sorted_reads)
         
         # put dictionary to the splitted_dicts under the same cb outermost key
-        # (UR1, (1,5, chr1)) and (UR1, (10^5, 10^5 + 500, chr1)) are different subclusters despite having same CB and UR. because they have too large span.
+        # (UR1, (1,5)) and (UR1, (10^5, 10^5 + 500)) are different subclusters despite having same CB and UR. because they have too large span.
         # Their tags are differently saved in 'YB' tag.
         cb = unique_pair[0]
         
@@ -820,13 +804,12 @@ def purify_UR(reads_per_ub, unique_pairs, threshold):
             
         else:
             # merge two dictionaries under same cb. so that you use this in the merge step
-            # This is within the same chromosome:
-            # splitted_dicts[cb] = { (UR1, (1, 5, chr1)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500, chr1)):[r5, r6, r7, r8] }
-            # splitted_per_ur = {(UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
+            # splitted_dicts[cb] = { (UR1, (1, 5)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500)):[r5, r6, r7, r8] }
+            # splitted_per_ur = {(UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }
             splitted_dicts[cb] = merge_two_dicts(splitted_dicts[cb], splitted_per_ur)
     
     # after merginx two dictionaries:
-    # splitted_dicts = {'cb1':{ (UR1, (1, 5, chr1)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500, chr1)):[r5, r6, r7, r8], (UR6, (0, 6, chr20)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
+    # splitted_dicts = {'cb1':{ (UR1, (1, 5)):[r1, r2, r3, r4], (UR1, (10^5, 10^5 + 500)):[r5, r6, r7, r8], (UR6, (0, 6)):[r9, r10, r11, r12, r13, r14, r15, r16, r17, r18] }}
     # This new_dict should be within same CB tag
     cbs = splitted_dicts.keys()
     for cb in cbs:
@@ -846,28 +829,28 @@ def get_all_reads_per_umi (sam):
     Returns
     -------
     reads_per_ub : a dictionary of dictionary
-    1st key : a tuple of CB, UMI and a chromosome
+    1st key : a tuple of CB and UMI
     2nd key : 'reads'
-    value : a list of reads with the same CB and UR tag and a chromosome.
+    value : a list of reads with the same CB and UR tag
         
     unique_pairs : a list of tuple
-        a list of tuple where each element is unique tuple of CB, UR tag and a chromosome.
+        a list of tuple where each element is unique tuple of CB and UR tag.
     """        
     reads_per_ub = {}
     unique_pairs = set()
     
     for read in sam.fetch(until_eof = True):
-        chrom = read.reference_name
+        
         if read.has_tag('UR') and read.has_tag('CB'):
             umi = read.get_tag('UR')
             cb = read.get_tag('CB')
             
-            if (cb, umi, chrom) not in reads_per_ub.keys():
-                reads_per_ub[(cb, umi, chrom)] = {}
-                reads_per_ub[(cb, umi, chrom)]['reads'] = []
-            reads_per_ub[(cb, umi, chrom)]['reads'].append(read)
+            if (cb, umi) not in reads_per_ub.keys():
+                reads_per_ub[(cb,umi)] = {}
+                reads_per_ub[(cb,umi)]['reads'] = []
+            reads_per_ub[(cb,umi)]['reads'].append(read)
             #unique umis
-            unique_pairs.add((cb, umi, chrom))
+            unique_pairs.add((cb,umi))
             
     unique_pairs = list(unique_pairs)
     return (reads_per_ub, unique_pairs)

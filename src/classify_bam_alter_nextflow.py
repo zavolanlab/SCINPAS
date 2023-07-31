@@ -141,11 +141,11 @@ def classify_bam(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             # set cluster ID
             read.set_tag("ZI", pA_id)
             # set score of the cluster
-            read.set_tag("ZS", str(score))
+            read.set_tag("ZS", int(score))
             # set boolean mark that specifies whether a read is located in both clusters or not. 
             # 0 -> a read is located in 1 cluster.
             # 1 -> a read is located in both clusters.
-            read.set_tag("ZD", str(0))
+            read.set_tag("ZD", 0)
             
             final_reads.append(read)
             
@@ -170,9 +170,9 @@ def classify_bam(polyA_reads, bed, use_fixed_cs, polyA_cluster_id):
             
             read.set_tag("ZI", pA_id)
             
-            read.set_tag("ZS", str(score))
+            read.set_tag("ZS", int(score))
             
-            read.set_tag("ZD", str(1))
+            read.set_tag("ZD", 1)
             
             final_reads.append(read)
         
@@ -236,10 +236,14 @@ def get_inputs():
     bam = pysam.AlignmentFile(bam_dir, "rb")
     
     input_bed_dir = args.input_bed
-
-    input_bed = pd.read_csv(input_bed_dir, delimiter = '\t', header = None)
-    input_bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
+        
+    try:
+        input_bed = pd.read_csv(input_bed_dir, delimiter = '\t', header = None)
+        input_bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
     
+    except pd.errors.EmptyDataError:
+        input_bed = pd.DataFrame()
+        
     use_fc = bool(args.use_fc)
     class_reads = args.class_reads
     
@@ -257,11 +261,20 @@ def run_process():
     
     bam, input_bed, use_fc, out_bam, remaining_bam, class_reads = get_inputs()
     print('successfully got inputs')
-    
+            
     all_polyA_reads = convert_bam_to_list(bam)
     print('successfully converted bam to a list')
     
-    classified_reads, remaining_reads = classify_bam(all_polyA_reads, input_bed, use_fc, class_reads)
+    print("input bed: " + str(len(input_bed)))
+    print("all_polyA_readsL " + str(len(all_polyA_reads)))
+    
+    if len(input_bed) == 0:
+        classified_reads = []
+        remaining_reads = all_polyA_reads
+    
+    else:
+        classified_reads, remaining_reads = classify_bam(all_polyA_reads, input_bed, use_fc, class_reads)
+    
     print('successfully separated reads')
         
     out_mode = "wb"

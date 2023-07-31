@@ -74,7 +74,10 @@ def separate_cluster(bed_dir, terminal_exons, threshold):
     ----------
     bed_dir : string
         a directory towards bed file that contains all pA sites (from sample) mapping to terminal exons.
-        
+
+    terminal_exons : bed
+        bed file containing annotated terminal exons (from gtf).
+            
     threshold : int
         distance threshold for splitting pA clusters (pA sites) mapping to terminal exon into 2 categories
         e.g. 100bp by default
@@ -89,6 +92,7 @@ def separate_cluster(bed_dir, terminal_exons, threshold):
     """           
     unannotated_bed = []
     annotated_bed = []
+    count = 0
     with open(bed_dir, "r") as t:
         for line in t:
             # use cluster span to find which terminal exons that a cluster intersects with.
@@ -102,8 +106,11 @@ def separate_cluster(bed_dir, terminal_exons, threshold):
             cs = int(cluster_id.split(':')[1])
             
             # subset terminal exon bed file (gtf) with overlapping span.
-            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
+            # filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
+            #                                          & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
+
+            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end + 1)\
+                                                     & (terminal_exons['end'] >= cluster_start - 1) & (terminal_exons['strand'] == direction)].copy()
             print(filtered_terminal_exons)
             distances = []
             # compute distance between terminal exon and current representative cleavage site
@@ -130,7 +137,13 @@ def separate_cluster(bed_dir, terminal_exons, threshold):
             
             elif min_d < threshold:
                 annotated_bed.append((chrom, cluster_start, cluster_end, cluster_id, score, direction))
-
+            
+            count += 1
+    
+    print('total numPAS of TE:' + str(count))
+    print('total # of pas ate: ' + str(len(annotated_bed)))
+    print('total # of pas ute: ' + str(len(unannotated_bed)))
+    
     unannotated_df = pd.DataFrame(unannotated_bed, columns = ['seqid', 'start', 'end', 'id', 'score', 'strand'])
     unannotated_df.sort_values(by=['seqid', 'id', 'start', 'end'], inplace = True)
     

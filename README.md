@@ -24,7 +24,7 @@ directly from single cell RNA sequencing data.
 1) installation of nextflow and dependencies.
 
 ```bash
-mamba create -n scinpas nextflow
+mamba create -n nf-env nextflow
 ```
 
 2) Data must be single cell 3'end RNA sequencing data.
@@ -58,57 +58,67 @@ Type1 is the default cell type. e.g. spermatocyte.
 Type2 is cell type that you expect changes in average terminal exon length and/or the number of intronic polyA sites. e.g. elongating spermatid.
 This is only relevant if you do "cell_type_analysis". 
 
+13) catalog.bed is needed for computing overlap between SCINPAS PAS and existing, known pA catalog.
+
 **Note: folder structures/locations, gtf file, catalog, reference genome and result folder can be changed in the nextflow.config file. 
-However, input file format and negative control format should not be changed because
+However, input file format, negative control format variable names in nextflow.config should not be changed because
 downstream processes expect that name.**
+
+**Note: if you do not have some input files (e.g. control, celltype annotation, catalog.bed), processes which need those files will not be executed. The rest of the processes will run.**
 
 ## Command line
 
 > Note: execution shown for slurm cluster. 
 > Create and select other profile as fit.
 
-Once you made a conda environment and activated the environment, traverse into src folder and run the nextflow command as follows:
+Once you made a conda environment and activated the environment (conda activate nf-env), traverse into src folder and run the nextflow command as follows:
 
 1. Running mouse samples:
 
 	1.1. if you do not want to run analysis:
-	./nextflow run main.nf -profile slurm -resume --sample_type "mouse"
+	nextflow run main.nf -profile slurm -resume --sample_type "mouse"
 
-	1.2. if you want to do analysis but not (cell type specific and overlap analysis): 
-	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" 
+	1.2. if you want to do analysis but not (cell type specific and overlap analysis, gene_coverage): 
+	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" 
 
 	1.3. if you want to do analysis including cell type specific analysis: 
-	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --cell_type_analysis "yes"
+	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --cell_type_analysis "yes"
 
 	1.4. if you want to do analysis including analysis related to overlap (comparison between SCINPAS-induced PAS and pre-exsting catalog): 
-	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --overlap "yes"
+	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --overlap "yes"
 
-	1.5. if you want to do all analysis: 
-	./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes"
+	1.5. if you want to do analysis including analysis related to gene coverage: 
+	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --g_coverage "yes"
+
+	1.6. if you want to do all analysis: 
+	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
 
 2. Running human samples:
 
 	2.1. if you do not want to run analysis:
-	./nextflow run main.nf -profile slurm -resume --sample_type "human"
+	nextflow run main.nf -profile slurm -resume --sample_type "human"
 
-	2.2. if you want to do analysis but not (cell type specific and overlap analysis): 
-	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" 
+	2.2. if you want to do analysis but not (cell type specific and overlap analysis, gene_coverage): 
+	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" 
 
 	2.3. if you want to do analysis including cell type specific analysis: 
-	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --cell_type_analysis "yes"
+	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --cell_type_analysis "yes"
 
 	2.4. if you want to do analysis including analysis related to overlap (comparison between SCINPAS-induced PAS and pre-exsting catalog): 
-	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --overlap "yes"
+	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --overlap "yes"
 
-	2.5. if you want to do all analysis: 
-	./nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" --cell_type_analysis "yes" --overlap "yes"
+	2.5. if you want to do analysis including analysis related to gene coverage: 
+	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --g_coverage "yes"
+
+	2.6. if you want to do all analysis: 
+	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
 
 3. background running of the pipeline:
 	
 	By default, nextflow displays progression report to the screen. If you do not want that,
 	you can run "nohup" parameter so that progresison report is saved in the log file. Example command line is: 
 
-	nohup ./nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --overlap "yes" 
+	nohup nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
 
 4. Note:
 	

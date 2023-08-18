@@ -190,10 +190,13 @@ def get_GX_distance_dict(dictionary, terminal_exons):
             probability = frequency/tot_frequency
             
             # find all terminal exons of a particular gene only that overlaps with the pA cluster.
-            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)\
+            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end + 1)\
+                                                     & (terminal_exons['end'] >= cluster_start - 1) & (terminal_exons['strand'] == direction)\
                                                          & (terminal_exons['id'] == gene)].copy()   
-            
+
+            # filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
+            #                                          & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)\
+            #                                              & (terminal_exons['id'] == gene)].copy()                  
             print(filtered_terminal_exons)    
             # whther a current pA site maps to single or multiple terminal exons, always choose the longest terminal exon.
             start_longest_te, end_longest_te = get_longest_te_positions(filtered_terminal_exons)
@@ -237,9 +240,12 @@ def group_by_gene(cell_type_bed_input, terminal_exons):
             direction = line.split()[5]
             
             # subset terminal exon bed file (gtf) with overlapping span.
-            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
-                                                     & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
-            
+            filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end + 1)\
+                                                     & (terminal_exons['end'] >= cluster_start - 1) & (terminal_exons['strand'] == direction)].copy()
+
+            # filtered_terminal_exons = terminal_exons[(terminal_exons['seqid'] == chrom) & (terminal_exons['start'] <= cluster_end)\
+            #                                          & (terminal_exons['end'] >= cluster_start) & (terminal_exons['strand'] == direction)].copy()
+                
             genes = list(set(filtered_terminal_exons['id']))
             n_genes = len(genes)
             # frequency = 1/n_genes

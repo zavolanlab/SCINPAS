@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8272892.svg)](https://doi.org/10.5281/zenodo.8272892)
 # SCINPAS (Single Cell Identification of Novel PolyA Sites)
 
 ## Description

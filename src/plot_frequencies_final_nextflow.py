@@ -6,15 +6,19 @@ Created on Thu Jan 20 13:15:22 2022
 @author: Youngbin Moon (y.moon@unibas.ch)
 """
 
-import pysam
+
+
+
+
+
+
+
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
-
-
-
-
-
+import pysam
 """
 Aim : draw A/T/G/C frequency plot for a specific sample and a specific class of reads. (considers all chromosomes.)
 class = annotated, unannotated, intronic, intergenic or exonic
@@ -191,6 +195,7 @@ def make_frequency_matrix(bed_directory, fasta, window):
         for line in t:
             cluster_id = line.split()[3]
             chromosome = cluster_id.split(':')[0]
+
             # read_end = the most frequent cleavage sites = "true" cleavage site
             read_end = cluster_id.split(':')[1]
             direction = cluster_id.split(':')[2]
@@ -241,7 +246,7 @@ def get_args():
     out_name = args.out_name
     
     window_size = int(args.window_size)
-    
+
     return bed_dir, fasta_file, out_name, window_size
 
 def run_process():

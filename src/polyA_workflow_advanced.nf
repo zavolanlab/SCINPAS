@@ -9,7 +9,7 @@ GET_SPAN_SPLIT; GET_SPAN_HIST; GET_D_HISTOGRAM_ALTER; FIX_SOFTCLIPPED_REGION; ME
 COMBINE_MOTIF_ORDERS; GET_MOTIF_FREQ_GTF_PLOT; SPLIT_MOTIF_ORDER_PER_SAMPLE; MOTIF_ORDERS_ONE_BY_ONE; COMPUTE_SCORES_FOR_MOTIF_ALTER;\
 GET_BAR_CHART_SCORE_MOTIF_POLYA; GET_SOFTCLIPPED_DISTRIBUTION; MERGE_ALL_NUM_PAS_CSVS; FUSE_MOTIF_SCORE_NUM_PAS; GET_BAR_CHART_NUM_POLYA; GET_TOTAL_NUM_GENES;\
 GET_BAR_CHART_GENE_COVERAGE; SOFTCLIP_PWM_LOGO; SPLIT_CSV_BY_CELL_TYPE; SPLIT_SAMPLE_BY_TYPE; MERGE_BY_CELL_TYPE; DISTANCE_SCATTER; T1_T2_SCATTER;\
-UNCOUPLE_BAM_WITH_SAMPLE; MERGE_ALL_SAMPLES; GET_POLYA_UNIQUE_CLEAVAGE_SITES_ALL_SAMPLES;\
+UNCOUPLE_BAM_WITH_SAMPLE; MERGE_ALL_SAMPLES; SPLIT_ALL_POLYA_ALL_SAMPLES; GET_POLYA_UNIQUE_CLEAVAGE_SITES_ALL_SAMPLES; MERGED_BED_ALL_SAMPLES;\
 PERFORM_CLUSTERING_ALL_SAMPLES; GET_OVERLAP; GET_TOP_OVERLAP;} from './processes_advanced'
 
 include {PREPARE_IN_SLC as PREPARE_IN_SLC_DATA} from './processes_advanced'
@@ -47,22 +47,27 @@ include {SORT_PHASE2 as SORT_NONPOLYA_CONTROL} from './processes_advanced'
 
 // polyA clustering (sample) 
 include {GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED as GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED_SAMPLE} from './processes_advanced'
+include {MERGED_BED as MERGED_POLYA_CS_BED_SAMPLE} from './processes_advanced'
 include {PERFORM_CLUSTERING_TUPLE as PERFORM_CLUSTERING_SAMPLE_TUPLE} from './processes_advanced'
 
 // non-polyA clustering (sample)
 include {GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED as GET_NON_POLYA_UNIQUE_CLEAVAGE_SITES_BED_SAMPLE} from './processes_advanced'
+include {MERGED_BED as MERGED_NON_POLYA_CS_BED_SAMPLE} from './processes_advanced'
 include {PERFORM_CLUSTERING_TUPLE as PERFORM_CLUSTERING_SAMPLE_TUPLE_NONPOLYA} from './processes_advanced'
 
 // polyA clustering (control)
 include {GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED as GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED_CONTROL} from './processes_advanced'
+include {MERGED_BED as MERGED_POLYA_CS_BED_CONTROL} from './processes_advanced'
 include {PERFORM_CLUSTERING_TUPLE as PERFORM_CLUSTERING_CONTROL_TUPLE} from './processes_advanced'
 
 // dedup clustering (control)
 include {GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED as GET_DEDUP_UNIQUE_CLEAVAGE_SITES_BED_CONTROL} from './processes_advanced'
+include {MERGED_BED as MERGED_DEDUP_CS_BED_CONTROL} from './processes_advanced'
 include {PERFORM_CLUSTERING_TUPLE as PERFORM_CLUSTERING_DEDUP_CONTROL_TUPLE} from './processes_advanced'
 
 // non-polyA clustering (control)
 include {GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED as GET_NON_POLYA_UNIQUE_CLEAVAGE_SITES_BED_CONTROL} from './processes_advanced'
+include {MERGED_BED as MERGED_NON_POLYA_CS_BED_CONTROL} from './processes_advanced'
 include {PERFORM_CLUSTERING_TUPLE as PERFORM_CLUSTERING_CONTROL_TUPLE_NONPOLYA} from './processes_advanced'
 
 // sample (classify reads into different classes)
@@ -76,6 +81,8 @@ include {BED_NO_INTERSECT_TUPLE as TE_NO_INTERSECT_TUPLE} from './processes_adva
 include {BED_INTERSECT_TUPLE as TE_FURTHER_INTERSECT_TUPLE} from './processes_advanced'
 
 include {SPLIT_PHASE2 as SPLIT_ALL_POLYA} from './processes_advanced'
+include {SPLIT_PHASE2 as SPLIT_ALL_NON_POLYA} from './processes_advanced'
+include {SPLIT_PHASE2 as SPLIT_ALL_DEDUP} from './processes_advanced'
 include {CHANGE_TUPLE_ORDER as CHANGE_TUPLE_ORDER_POLYA_SAMPLE} from './processes_advanced'
 include {CLASSIFY_BAM as CLASSIFY_TE_SAMPLE} from './processes_advanced'
 include {CLASSIFY_BAM as CLASSIFY_E_SAMPLE} from './processes_advanced'
@@ -123,6 +130,7 @@ include {BED_INTERSECT_TUPLE as TE_INTERSECT_CONTROL_TUPLE} from './processes_ad
 include {BED_NO_INTERSECT_TUPLE as TE_NO_INTERSECT_CONTROL_TUPLE} from './processes_advanced'
 
 include {SPLIT_PHASE2 as SPLIT_ALL_POLYA_CONTROL} from './processes_advanced'
+include {SPLIT_PHASE2 as SPLIT_ALL_NON_POLYA_CONTROL} from './processes_advanced'
 include {CHANGE_TUPLE_ORDER as CHANGE_TUPLE_ORDER_POLYA_CONTROL} from './processes_advanced'
 include {CLASSIFY_BAM as CLASSIFY_TE_CONTROL} from './processes_advanced'
 include {CLASSIFY_BAM as CLASSIFY_E_CONTROL} from './processes_advanced'
@@ -280,7 +288,9 @@ include {SORT_CELL_TYPE as SORT_POLYA_TYPE1_SPECIFIC} from './processes_advanced
 include {SORT_CELL_TYPE as SORT_POLYA_TYPE2_SPECIFIC} from './processes_advanced'
 
 // cell type1 specific
+include {SPLIT_CELL_TYPE as SPLIT_CELL_TYPE1} from './processes_advanced'
 include {GET_CELL_TYPE_POLYA_UNIQUE_CS_BED as POLYA_TYPE1_BAM_TO_BED} from './processes_advanced'
+include {MERGED_BED_CELL_TYPE as MERGED_BED_CELL_TYPE1} from './processes_advanced'
 include {PERFORM_CLUSTERING_CELL_TYPE as PERFORM_CLUSTERING_CELL_TYPE1} from './processes_advanced'
 
 include {BED_NO_INTERSECT_CELL_TYPE as GENE_NO_INTERSECT_TYPE1} from './processes_advanced'
@@ -303,7 +313,9 @@ include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE1_NUM_POLYA_SITES_EXONIC} from
 include {GET_CELL_TYPE_NUM_POLYA_SITES as GET_TYPE1_NUM_POLYA_SITES_TE} from './processes_advanced'
 
 // cell type2 specific
+include {SPLIT_CELL_TYPE as SPLIT_CELL_TYPE2} from './processes_advanced'
 include {GET_CELL_TYPE_POLYA_UNIQUE_CS_BED as POLYA_TYPE2_BAM_TO_BED} from './processes_advanced'
+include {MERGED_BED_CELL_TYPE as MERGED_BED_CELL_TYPE2} from './processes_advanced'
 include {PERFORM_CLUSTERING_CELL_TYPE as PERFORM_CLUSTERING_CELL_TYPE2} from './processes_advanced'
 
 include {BED_NO_INTERSECT_CELL_TYPE as GENE_NO_INTERSECT_TYPE2} from './processes_advanced'
@@ -381,7 +393,7 @@ workflow polyA{
 	raw_negative_control_sorted_bams_bais = \
 	SPLIT_NEG_CONTROL_RAW(negative_control_data_raw_tuple.combine(chromosomes), params.raw_negative_ctrl_template)
 
-	// UMI-deduplicated negative control reads per chr.
+	// UMI-deduplicated negative control reads per chr (needed for computing span).
 	dedup_negative_control_sorted_bams_bais = \
 	SPLIT_NEG_CONTROL_DEDUP(fixed_negative_control_dedup_bam_bai.combine(chromosomes), params.dedup_negative_ctrl_template)
 
@@ -403,7 +415,7 @@ workflow polyA{
 	// sort full polyA reads for all samples
 	polyA_sorted_full_bams_bais_sample_only = SORT_POLYA_SAMPLE_ONLY(polyA_sample_only)
 	// sort nonpolyA reads for all samples
-	nonpolyA_sorted_full_bams_bais = SORT_NONPOLYA(non_polyA_sample_only)	
+	nonpolyA_sorted_full_bams_bais_sample_only = SORT_NONPOLYA(non_polyA_sample_only)	
 
 	// sort full polyA reads for negative control
 	polyA_sorted_full_bams_bais_control = SORT_POLYA_NEG_CONTROL(polyA_control)	
@@ -411,25 +423,41 @@ workflow polyA{
 	nonpolyA_sorted_full_bams_bais_control = SORT_NONPOLYA_CONTROL(non_polyA_control)
 
 	// polyA_clustering (sample)
-	polyA_unique_cs_beds_sample = GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED_SAMPLE(polyA_sorted_full_bams_bais_sample_only, params.polyA_unique_cs_bed_sample, params.get_polyA_unique_cs_script)	
-	polyA_clustered_beds_sample_tuple = PERFORM_CLUSTERING_SAMPLE_TUPLE(polyA_unique_cs_beds_sample, params.sample_cluster_out, params.cluster_pas_script)
+	polyA_sorted_bams_bais_sample = SPLIT_ALL_POLYA(polyA_sorted_full_bams_bais_sample_only.combine(chromosomes), params.out_polyA_partial)
+	
+	polyA_unique_cs_beds_sample = GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED_SAMPLE(polyA_sorted_bams_bais_sample, params.polyA_unique_cs_bed_sample, params.get_polyA_unique_cs_script)
+	merged_polyA_unique_cs_beds_sample = MERGED_POLYA_CS_BED_SAMPLE(polyA_unique_cs_beds_sample.groupTuple(by:1, sort: true, size: num_chrom), params.polyA_unique_cs_bed_sample, params.merge_bed_script)
+	polyA_clustered_beds_sample_tuple = PERFORM_CLUSTERING_SAMPLE_TUPLE(merged_polyA_unique_cs_beds_sample, params.sample_cluster_out, params.cluster_pas_script)
 	
 	// non_polyA clustering (sample)
-	non_polyA_unique_cs_beds_sample = GET_NON_POLYA_UNIQUE_CLEAVAGE_SITES_BED_SAMPLE(nonpolyA_sorted_full_bams_bais, params.non_polyA_unique_cs_bed_sample, params.get_polyA_unique_cs_script)
-	non_polyA_clustered_beds_sample_tuple = PERFORM_CLUSTERING_SAMPLE_TUPLE_NONPOLYA(non_polyA_unique_cs_beds_sample, params.sample_nonpolyA_cluster_out, params.cluster_pas_script)
+	non_polyA_sorted_bams_bais_sample = SPLIT_ALL_NON_POLYA(nonpolyA_sorted_full_bams_bais_sample_only.combine(chromosomes), params.out_non_polyA_partial)
+
+	non_polyA_unique_cs_beds_sample = GET_NON_POLYA_UNIQUE_CLEAVAGE_SITES_BED_SAMPLE(non_polyA_sorted_bams_bais_sample, params.non_polyA_unique_cs_bed_sample, params.get_polyA_unique_cs_script)
+	merged_non_polyA_unique_cs_beds_sample = MERGED_NON_POLYA_CS_BED_SAMPLE(non_polyA_unique_cs_beds_sample.groupTuple(by:1, sort: true, size: num_chrom), params.non_polyA_unique_cs_bed_sample, params.merge_bed_script)
+	non_polyA_clustered_beds_sample_tuple = PERFORM_CLUSTERING_SAMPLE_TUPLE_NONPOLYA(merged_non_polyA_unique_cs_beds_sample, params.sample_nonpolyA_cluster_out, params.cluster_pas_script)
 
 	// polyA_clustering (control)
-	polyA_unique_cs_beds_control = GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED_CONTROL(polyA_sorted_full_bams_bais_control, params.polyA_unique_cs_bed_control, params.get_polyA_unique_cs_script)
-	polyA_clustered_bed_control_tuple = PERFORM_CLUSTERING_CONTROL_TUPLE(polyA_unique_cs_beds_control, params.control_cluster_out, params.cluster_pas_script)
-	
-	// dedup clustering (control)
-	dedup_unique_cs_beds_control = GET_DEDUP_UNIQUE_CLEAVAGE_SITES_BED_CONTROL(fixed_negative_control_dedup_full_bam_bai, params.dedup_unique_cs_bed_control, params.get_polyA_unique_cs_script)
-	dedup_clustered_bed_control_tuple = PERFORM_CLUSTERING_DEDUP_CONTROL_TUPLE(dedup_unique_cs_beds_control, params.control_dedup_cluster_out, params.cluster_pas_script)
+	polyA_sorted_bams_bais_control = SPLIT_ALL_POLYA_CONTROL(polyA_sorted_full_bams_bais_control.combine(chromosomes), params.out_polyA_partial_control)
 
-	// non_polyA clustering (control)
-	non_polyA_unique_cs_beds_control = GET_NON_POLYA_UNIQUE_CLEAVAGE_SITES_BED_CONTROL(nonpolyA_sorted_full_bams_bais_control, params.non_polyA_unique_cs_bed_control, params.get_polyA_unique_cs_script)
-	non_polyA_clustered_beds_control_tuple = PERFORM_CLUSTERING_CONTROL_TUPLE_NONPOLYA(non_polyA_unique_cs_beds_control, params.control_nonpolyA_cluster_out, params.cluster_pas_script)
+	polyA_unique_cs_beds_control = GET_POLYA_UNIQUE_CLEAVAGE_SITES_BED_CONTROL(polyA_sorted_bams_bais_control, params.polyA_unique_cs_bed_control, params.get_polyA_unique_cs_script)
+	merged_polyA_unique_cs_beds_control = MERGED_POLYA_CS_BED_CONTROL(polyA_unique_cs_beds_control.groupTuple(by:1, sort: true, size: num_chrom), params.polyA_unique_cs_bed_control, params.merge_bed_script) 
+	polyA_clustered_bed_control_tuple = PERFORM_CLUSTERING_CONTROL_TUPLE(merged_polyA_unique_cs_beds_control, params.control_cluster_out, params.cluster_pas_script)
 	
+	// non_polyA clustering (control)
+	non_polyA_sorted_bams_bais_control = SPLIT_ALL_NON_POLYA_CONTROL(nonpolyA_sorted_full_bams_bais_control.combine(chromosomes), params.out_non_polyA_partial_control)
+
+	non_polyA_unique_cs_beds_control = GET_NON_POLYA_UNIQUE_CLEAVAGE_SITES_BED_CONTROL(non_polyA_sorted_bams_bais_control, params.non_polyA_unique_cs_bed_control, params.get_polyA_unique_cs_script)
+	merged_non_polyA_unique_cs_beds_control = MERGED_NON_POLYA_CS_BED_CONTROL(non_polyA_unique_cs_beds_control.groupTuple(by:1, sort: true, size: num_chrom), params.non_polyA_unique_cs_bed_control, params.merge_bed_script)
+	non_polyA_clustered_beds_control_tuple = PERFORM_CLUSTERING_CONTROL_TUPLE_NONPOLYA(merged_non_polyA_unique_cs_beds_control, params.control_nonpolyA_cluster_out, params.cluster_pas_script)
+
+	// dedup clustering (control)
+	// needed to split again because we discard chromosomes that are not normal chromosomes. e.g. mouse: 1~19, X, Y 
+	split_fixed_negative_control_dedup_bam_bai = SPLIT_ALL_DEDUP(fixed_negative_control_dedup_full_bam_bai.combine(chromosomes), params.out_dedup_partial_control)
+
+	dedup_unique_cs_beds_control = GET_DEDUP_UNIQUE_CLEAVAGE_SITES_BED_CONTROL(split_fixed_negative_control_dedup_bam_bai, params.dedup_unique_cs_bed_control, params.get_polyA_unique_cs_script)
+	merged_dedup_unique_cs_beds_control = MERGED_DEDUP_CS_BED_CONTROL(dedup_unique_cs_beds_control.groupTuple(by:1, sort: true, size: num_chrom), params.dedup_unique_cs_bed_control, params.merge_bed_script)
+	dedup_clustered_bed_control_tuple = PERFORM_CLUSTERING_DEDUP_CONTROL_TUPLE(merged_dedup_unique_cs_beds_control, params.control_dedup_cluster_out, params.cluster_pas_script)
+
 	// classification of bed (sample)
 	polyA_intergenic_clustered_beds_tuple = GENES_NO_INTERSECT_TUPLE(polyA_clustered_beds_sample_tuple, genes_bed, params.intergenic_template)
 	all_genic_clustered_beds_tuple = GENES_INTERSECT_TUPLE(polyA_clustered_beds_sample_tuple, genes_bed, params.all_genic_template)
@@ -441,7 +469,7 @@ workflow polyA{
 	polyA_TE_clustered_beds_tuple = TE_INTERSECT_TUPLE(all_exonic_clustered_beds_tuple, terminal_exons_bed, params.te_template)
 		
 	// classification of bam (sample)	
-	polyA_sorted_bams_bais_sample = SPLIT_ALL_POLYA(polyA_sorted_full_bams_bais_sample_only.combine(chromosomes), params.out_polyA_partial)
+	
 	polyA_sorted_bams_sample_bais = CHANGE_TUPLE_ORDER_POLYA_SAMPLE(polyA_sorted_bams_bais_sample)
 
 	(te_bams, non_te_bams) = CLASSIFY_TE_SAMPLE(polyA_sorted_bams_sample_bais.combine(polyA_TE_clustered_beds_tuple, by:1), params.te_template, params.non_te_template, "TE", params.classify_script)
@@ -489,7 +517,6 @@ workflow polyA{
 	polyA_TE_clustered_beds_control_tuple = TE_INTERSECT_CONTROL_TUPLE(all_exonic_clustered_beds_control_tuple, terminal_exons_bed, params.te_control_template)
 
 	// classification of bam (control)
-	polyA_sorted_bams_bais_control = SPLIT_ALL_POLYA_CONTROL(polyA_sorted_full_bams_bais_control.combine(chromosomes), params.out_polyA_partial_control)
 	polyA_sorted_bams_sample_bais_control = CHANGE_TUPLE_ORDER_POLYA_CONTROL(polyA_sorted_bams_bais_control)
 
 	(te_bams_control, non_te_bams_control) = CLASSIFY_TE_CONTROL(polyA_sorted_bams_sample_bais_control.combine(polyA_TE_clustered_beds_control_tuple, by:1), params.te_control_template, params.non_te_control_template, "TE", params.classify_script)
@@ -588,7 +615,7 @@ workflow polyA{
 		merged_softclipped_dedup_counts = CONCAT_SOFTCLIPPED_COUNTS_DEDUP(dedup_softclipped_counts_csvs.collect(), params.dedup_softclipped_type)
 
 		// get counts csvs per non-polyA class and per sample name.
-		nonpolyA_counts_csvs = GET_COUNTS_NONPOLYA(nonpolyA_sorted_full_bams_bais, params.counts_nonpolyA, params.nonpolyA_type, params.get_count_script)
+		nonpolyA_counts_csvs = GET_COUNTS_NONPOLYA(nonpolyA_sorted_full_bams_bais_sample_only, params.counts_nonpolyA, params.nonpolyA_type, params.get_count_script)
 		nonpolyA_counts_csvs_control = GET_COUNTS_NONPOLYA_CONTROL(nonpolyA_sorted_full_bams_bais_control, params.counts_nonpolyA, params.nonpolyA_type, params.get_count_script)
 		// merges counts csvs per non-polyA across all samples.
 		merged_nonpolyA_counts = CONCAT_COUNTS_NONPOLYA(nonpolyA_counts_csvs.collect(), params.nonpolyA_type)
@@ -741,7 +768,7 @@ workflow polyA{
 		combined_motif_order = COMBINE_MOTIF_ORDERS(motif_orders_and_samples, gtf_motif_order, params.motif_order_outname)
 
 		// compute motif scores (min:0, max:12) at the pulled polyA reads level per each sample.
-		(polyA_motif_graphs, polyA_motif_graphs_overlaid_png, polyA_motif_graphs_overlaid_svg, polyA_scores_csv) = COMPUTE_SCORES_FOR_MOTIF_ALTER(polyA_clustered_beds_sample_tuple.mix(non_polyA_clustered_beds_control_tuple),\
+		(polyA_motif_graphs_overlaid_png, polyA_motif_graphs_overlaid_svg, polyA_scores_csv) = COMPUTE_SCORES_FOR_MOTIF_ALTER(polyA_clustered_beds_sample_tuple.mix(non_polyA_clustered_beds_control_tuple),\
 		params.motif_search_out_polyA, gtf_peaks, params.compute_motif_score_advanced_script)
 
 		// combine motif scores (min:0, max:12) at the pulled polyA reads level across all samples.
@@ -832,11 +859,15 @@ workflow polyA{
 		//////////////////////////// overlap_with_catalog ////////////////////////////
 		if(params.overlap == "yes"){
 			(polyA_bams, polyA_bais) = UNCOUPLE_BAM_WITH_SAMPLE(polyA_sorted_full_bams_bais_sample_only)
-			(all_samples_polyA_bam, all_samples_polyA_bai) = MERGE_ALL_SAMPLES(polyA_bams.collect(), polyA_bais.collect())
+			all_samples_polyA_full_bam_bai = MERGE_ALL_SAMPLES(polyA_bams.collect(), polyA_bais.collect())
 
-			all_samples_polyA_bed = GET_POLYA_UNIQUE_CLEAVAGE_SITES_ALL_SAMPLES(all_samples_polyA_bam, all_samples_polyA_bai, params.polyA_unique_cs_bed_sample, params.get_polyA_unique_cs_script)
+			all_samples_polyA_bams_bais = SPLIT_ALL_POLYA_ALL_SAMPLES(all_samples_polyA_full_bam_bai.combine(chromosomes), params.out_polyA_partial_all_samples)
 
-			all_samples_polyA_clustered_bed = PERFORM_CLUSTERING_ALL_SAMPLES(all_samples_polyA_bed, params.sample_cluster_out, params.cluster_pas_script)
+			all_samples_polyA_beds = GET_POLYA_UNIQUE_CLEAVAGE_SITES_ALL_SAMPLES(all_samples_polyA_bams_bais, params.polyA_unique_cs_beds_all_samples, params.get_polyA_unique_cs_script)
+	
+			all_samples_merged_polyA_bed = MERGED_BED_ALL_SAMPLES(all_samples_polyA_beds.collect(), params.polyA_unique_cs_beds_all_samples, params.merge_bed_script)
+
+			all_samples_polyA_clustered_bed = PERFORM_CLUSTERING_ALL_SAMPLES(all_samples_merged_polyA_bed, params.sample_cluster_out, params.cluster_pas_script)
 
 			// Get overlap between SCINPAS PAS with catalog PAS
 			(all_samples_catalog_overlap_barchart_png, all_samples_catalog_overlap_barchart_svg) = GET_OVERLAP(all_samples_polyA_clustered_bed, params.get_overlap_script)
@@ -873,11 +904,17 @@ workflow polyA{
 			type1_polyA_full_bams_bais = SORT_POLYA_TYPE1_SPECIFIC(type1_polyA_full)
 			type2_polyA_full_bams_bais = SORT_POLYA_TYPE2_SPECIFIC(type2_polyA_full)
 
-			type1_polyA_full_beds = POLYA_TYPE1_BAM_TO_BED(type1_polyA_full_bams_bais, params.polyA_unique_cs_bed_type1, params.get_polyA_unique_cs_script)
-			type2_polyA_full_beds = POLYA_TYPE2_BAM_TO_BED(type2_polyA_full_bams_bais, params.polyA_unique_cs_bed_type2, params.get_polyA_unique_cs_script)
+			type1_polyA_bams_bais = SPLIT_CELL_TYPE1(type1_polyA_full_bams_bais.combine(chromosomes), params.type1, params.out_polyA_partial)
+			type2_polyA_bams_bais = SPLIT_CELL_TYPE2(type2_polyA_full_bams_bais.combine(chromosomes), params.type2, params.out_polyA_partial)
+
+			type1_polyA_beds = POLYA_TYPE1_BAM_TO_BED(type1_polyA_bams_bais, params.polyA_unique_cs_bed_type1, params.get_polyA_unique_cs_script)
+			type2_polyA_beds = POLYA_TYPE2_BAM_TO_BED(type2_polyA_bams_bais, params.polyA_unique_cs_bed_type2, params.get_polyA_unique_cs_script)
 			
-			type1_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE1(type1_polyA_full_beds, params.polyA_cluster_out_type1, params.cluster_pas_script)
-			type2_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE2(type2_polyA_full_beds, params.polyA_cluster_out_type2, params.cluster_pas_script)
+			type1_polyA_full_bed = MERGED_BED_CELL_TYPE1(type1_polyA_beds.collect(), params.polyA_unique_cs_bed_type1, params.merge_bed_script)
+			type2_polyA_full_bed = MERGED_BED_CELL_TYPE2(type2_polyA_beds.collect(), params.polyA_unique_cs_bed_type2, params.merge_bed_script)
+
+			type1_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE1(type1_polyA_full_bed, params.polyA_cluster_out_type1, params.cluster_pas_script)
+			type2_polyA_clustered_beds = PERFORM_CLUSTERING_CELL_TYPE2(type2_polyA_full_bed, params.polyA_cluster_out_type2, params.cluster_pas_script)
 
 			// type1 classification (bed)
 			type1_polyA_intergenic_clustered_beds = GENE_NO_INTERSECT_TYPE1(type1_polyA_clustered_beds, genes_bed, params.type1, params.intergenic_template)

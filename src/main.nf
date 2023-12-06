@@ -5,6 +5,7 @@ nextflow.enable.dsl=2
 include {FIND_TERMINAL_EXONS} from './processes_advanced'
 include {FIND_EXONS_GENES_BED} from './processes_advanced'
 include {polyA} from './polyA_workflow_advanced'
+include {polyA_all_samples} from './polyA_workflow_advanced_all_samples'
 
 workflow{
 
@@ -54,6 +55,13 @@ workflow{
 	// Get exons.bed and genes.bed
 	(exons, genes) = FIND_EXONS_GENES_BED(params.find_exons_genes_script)
 
-	polyA(inputs, chrs, terminal_exons, exons, genes, negative_control_dedup, negative_control_raw, num_chromosomes)
+	if(params.all_samples == "yes"){
+		polyA_all_samples(inputs, chrs, terminal_exons, exons, genes, num_chromosomes)	
+	}
+
+	else{
+		polyA(inputs, chrs, terminal_exons, exons, genes, negative_control_dedup, negative_control_raw, num_chromosomes)
+	}
+	
 }
 

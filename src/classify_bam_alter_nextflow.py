@@ -5,17 +5,20 @@ Created on Fri Feb 24 17:10:42 2023
 
 @author: Youngbin Moon (y.moon@unibas.ch)
 """
+
+
+
+
+
+
+
+
+
+
 import pandas as pd
 import argparse
 import pysam
-
-
-
-
-
-
-
-
+import multiprocessing.pool
 """
 Aim : Using a set of bed files (terminal exons.bed, exons.bed, intronic.bed or intergenic.bed from sample) from a sample,
 separate all polyA reads from a sample into specific classes (TE, exonic, intronic and intergenic) and save them as bam files.
@@ -44,7 +47,36 @@ def write_output(final_reads, o_name, o_mode, bam):
     outfile = pysam.AlignmentFile(o_name, o_mode, template=bam)
     for read in final_reads:
         outfile.write(read)
+
+def get_full_reads(filtered, remaining):
+    """
+    Parameters
+    ----------
+    filtered: a list of list
+        list where each element is a list of classified reads
+    
+    remaining: a list of list
+        list where each element is a list of un-classified reads
         
+    Returns
+    -------        
+    classified_reads: a list
+        a list containing all classified reads of an input bam file
+
+    remaining_reads: a list
+        a list containing all un-classified reads of an input bam file
+        
+    """    
+    classified_reads = []
+    remaining_reads = []
+    for filtered_list in filtered:
+        classified_reads += filtered_list
+    
+    for remaining_list in remaining:
+        remaining_reads += remaining_list
+    
+    return classified_reads, remaining_reads
+
 def get_cs(current_read, use_FC):
     """
     Parameters
@@ -265,16 +297,35 @@ def run_process():
     all_polyA_reads = convert_bam_to_list(bam)
     print('successfully converted bam to a list')
     
+    len_all = len(all_polyA_reads)
     print("input bed: " + str(len(input_bed)))
-    print("all_polyA_readsL " + str(len(all_polyA_reads)))
-    
+    print("all_polyA_readsL " + str(len_all))
+   
     if len(input_bed) == 0:
         classified_reads = []
         remaining_reads = all_polyA_reads
     
     else:
-        classified_reads, remaining_reads = classify_bam(all_polyA_reads, input_bed, use_fc, class_reads)
+        # create a default thread pool
+        pool = multiprocessing.pool.ThreadPool()
+        n_cores = pool._processes
+        
+        sublist_length = max(int(len_all/n_cores), 1000)
+        print('cores: ' + str(n_cores))
+        print('sublist_length: ' + str(sublist_length))
+        sublists = [all_polyA_reads[i:i + sublist_length] for i in range(0, len(all_polyA_reads), sublist_length)]
+        
+        # call apply_async() without callback
+        result_objects = [pool.apply_async(classify_bam, args = (sublist, input_bed, use_fc, class_reads)) for sublist in sublists]       
+
+        final_reads_list = [r.get()[0] for r in result_objects]
+        leftover_reads_list = [r.get()[1] for r in result_objects]
+        pool.close()
+        pool.join()
+        
+        classified_reads, remaining_reads = get_full_reads(final_reads_list, leftover_reads_list)
     
+    assert(len_all == len(classified_reads) + len(remaining_reads))
     print('successfully separated reads')
         
     out_mode = "wb"

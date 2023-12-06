@@ -6,6 +6,7 @@ Created on Fri Oct 21 14:50:21 2022
 @author: Youngbin Moon (y.moon@unibas.ch)
 """
 
+
 import pysam
 import matplotlib.pyplot as plt
 import argparse
@@ -14,6 +15,8 @@ import numpy as np
 from collections import Counter
 import pandas as pd
 import statistics
+import multiprocessing as mp
+import itertools
 """
 Aim 1 : Using all pA clusteres in a particular sample and class, draw all 18 motif frequency plots.
 Aim 2 : Using all pA clusteres in a particular sample and class, draw an overlaid motif frqeuncy plot which contains all 18 motif frequency plots.
@@ -118,7 +121,7 @@ def get_score(frequency_dictionary, up_bp, length_motif_interest, down_bp, peak_
         key = position in bp
         value = frequency. (considering all fixed representative cleavage sites)
         
-        e.g. if read_1 has the motif at -40, -30, -20 and if read_2 has motif at -30 and -20bp,
+        e.g. if representativeCleavageSite_1 has the motif at -40, -30, -20 and if representativeCleavageSite_2 has motif at -30 and -20bp,
         frequency_dict: -40: 1/3, -30: 5/6, -20: 5/6
                 
     up_bp : int (positive integer)
@@ -167,67 +170,6 @@ def get_score(frequency_dictionary, up_bp, length_motif_interest, down_bp, peak_
         score_peak = (0, peak)
     
     return score_peak
-
-def plot_linegraph(frequency_dictionary, motif_of_interest, file, up_bp, length_motif_interest, down_bp, tot_freq):
-    """
-    Parameters
-    ----------
-    frequency_dictionary : dictionary
-        key = position in bp
-        value = frequency. (considering all fixed representative cleavage sites that has the motif)
-        
-        e.g. if read_1 has the motif at -40, -30, -20 and if read_2 has motif at -30 and -20bp,
-        frequency_dict: -40: 1/3, -30: 5/6, -20: 5/6
-        
-    motif_of_interest : string
-        a motif of interest (the most frequently appearing motif at that moment)
-        
-    file : string
-        ouput figure file name template.
-        
-    up_bp : int (positive integer)
-        how many number of base pairs do we go upstream of fixed representative cleavage site?
-    
-    length_motif_interest : int
-        length of the most frequently appearing motif at that moment.
-            
-    down_bp : int (negative integer)
-        how many number of base pairs do we go downstream of fixed representative cleavage site?
-    
-    tot_freq : int
-        the maximum column sum of full_dataframe at that moment.
-        i.e. the number of occurrences of the most frequently appearing motif at that moment.       
-        
-    Returns
-    -------        
-    returns nothing but plot 1 motif frequency plot of interest.
-    """     
-    plt.figure()
-    full_out_name = file + '_' + motif_of_interest + ".png"
-
-    # index is currently -5 ..... -40 or +20 ...... -40
-    # you need to reverse it so that it becomes -40 ...... -5 or -40 ...... +20
-    existing_up_bp = list(frequency_dictionary.keys())
-    
-    if down_bp == 0:
-        base_pairs_upstream = list(range(-up_bp, -length_motif_interest + 2))
-    else:
-        base_pairs_upstream = list(range(-up_bp, -down_bp + 1))
-      
-    frequency_list = [frequency_dictionary[elem] if elem in existing_up_bp else 0 for elem in base_pairs_upstream]   
-    
-    # smoothen the graph
-    smoothen_list = get_smoothen_list(frequency_list)
-    plt.plot(base_pairs_upstream, smoothen_list, label = 'frequency graph for motif: ' + str(motif_of_interest) + 'with total count: ' + str(tot_freq))
-    
-    plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
-    plt.xticks(fontsize='x-large')
-    plt.yticks(fontsize='x-large')
-    plt.xlabel('bp upstream', fontsize = 'x-large')
-    plt.ylabel('frequency', fontsize = 'x-large')
-    
-    plt.rcParams['font.family'] = "Arial"
-    plt.savefig(full_out_name, bbox_inches='tight')
     
 def plot_linegraph_overlay(frequency_dictionary, motif_of_interest, up_bp, length_motif_interest, down_bp, tot_freq, motif_color, width):
     """
@@ -237,7 +179,7 @@ def plot_linegraph_overlay(frequency_dictionary, motif_of_interest, up_bp, lengt
         key = position in bp
         value = frequency. (considering all fixed representative cleavage sites that has the motif)
         
-        e.g. if read_1 has the motif at -40, -30, -20 and if read_2 has motif at -30 and -20bp,
+        e.g. if representativeCleavageSite_1 has the motif at -40, -30, -20 and if representativeCleavageSite_2 has motif at -30 and -20bp,
         frequency_dict: -40: 1/3, -30: 5/6, -20: 5/6
         
     motif_of_interest : string
@@ -316,7 +258,7 @@ def get_frequency_by_position(selected_row_names, selected_motif_only, up_until,
         key = position in bp
         value = frequency. (considering all fixed representative cleavage sites that has the motif)
         
-        e.g. if read_1 has the motif at -40, -30, -20 and if read_2 has motif at -30 and -20bp,
+        e.g. if representativeCleavageSite_1 has the motif at -40, -30, -20 and if representativeCleavageSite_2 has motif at -30 and -20bp,
         frequency_dict: -40: 1/3, -30: 5/6, -20: 5/6
     """       
     if down_bp == 0:    
@@ -597,8 +539,6 @@ def plot_all_motif_plots(df, m_infos, o_name, up, fasta_F, down, peaks_dict):
         scores[max_motif] = score
         peaks.append((max_motif, peak))
            
-        # plot 1 motif frequency plot at a time
-        plot_linegraph(frequency_dict, max_motif, o_name, up, length_max_motif, down, max_col_sum)
         
         # reduce df by removing rows that were used for plotting and the column (max_motif) used
         # reduce column as well. Otherwise, same motif can be used multiple times
@@ -769,7 +709,7 @@ def search_motif_in_cs(representative_fc_concatenate, upstream, fasta, motif_tup
     # by the time one comes here, it means one couldnt find that motif (e.g. 'AAUAAA') in the upstream (typically -40bp to -1bp) of this subsequence
     return False
     
-def get_full_dataframe(total_representative_cs, until, Fasta_file, m_list, down):
+def get_partial_dataframe(total_representative_cs, until, fasta_Dir, m_list, down):
     """
     Parameters
     ----------    
@@ -779,8 +719,8 @@ def get_full_dataframe(total_representative_cs, until, Fasta_file, m_list, down)
     until : int (positive integer)
         how many number of base pairs do we go upstream of a fixed representative cleavage site?
     
-    Fasta file : a fasta flie
-        contains the reference genome sequence.
+    fasta_Dir : string
+        a diretrocy towards a fasta file which contains the reference genome sequence.
     
     m_list : a list of tuple
         a list of tuple that contains the motif infomation.
@@ -792,8 +732,8 @@ def get_full_dataframe(total_representative_cs, until, Fasta_file, m_list, down)
     
     Returns
     -------
-    full_dataframe : dataframe
-        a full dataframe which considers all chromosomes in a given sample and class.
+    partial_dataframe : dataframe
+        a partial dataframe which considers a particular chromosome in a given sample and class.
         each row: fixed representative cleavage site where it is tuple of (chromId, direction, representative_fc)  
         each col: motif
         
@@ -803,33 +743,37 @@ def get_full_dataframe(total_representative_cs, until, Fasta_file, m_list, down)
         each cell value = 0 if a motif is not present in the range defined by that particular fixed representative cleavage site. 
     """       
     
+    fasta_File = pysam.FastaFile(fasta_Dir)
+    
     row_names = [elem for elem in total_representative_cs]
     col_names = [elem[0] for elem in m_list]
     
     # create an empty dataframe
-    full_dataframe = pd.DataFrame(np.zeros((len(row_names), len(col_names))))
+    partial_dataframe = pd.DataFrame(np.zeros((len(row_names), len(col_names))))
     
     # give column and row names to the empty dataframe
-    full_dataframe.columns = col_names
-    full_dataframe.index = row_names
+    partial_dataframe.columns = col_names
+    partial_dataframe.index = row_names
     
-    for representative_fc in full_dataframe.index:
+    for representative_fc in partial_dataframe.index:
         for motif_tuple in m_list:
             
-            motif_present = search_motif_in_cs(representative_fc, until, Fasta_file, motif_tuple, down)
+            motif_present = search_motif_in_cs(representative_fc, until, fasta_File, motif_tuple, down)
             
             if motif_present:
                 
                 # acessing the element by row_name and col_name
                 # += in dataframe is not recommended.
                 # If you want to update, copy the dataframe and then increment by 1
-                copy_dataframe = full_dataframe.copy()
-                full_dataframe.loc[representative_fc, motif_tuple[0]] = copy_dataframe.loc[representative_fc, motif_tuple[0]] + 1
+                copy_dataframe = partial_dataframe.copy()
+                partial_dataframe.loc[representative_fc, motif_tuple[0]] = copy_dataframe.loc[representative_fc, motif_tuple[0]] + 1
                                 
             elif not motif_present:
                 continue
-
-    return full_dataframe
+            
+    # return total_representative_cs as well so that when you concatenate it becomes same order as dataframe
+    # return partial_dataframe.to_numpy(), total_representative_cs
+    return partial_dataframe
 
 def get_representative_cleavage_sites(tempfile):
     """
@@ -841,10 +785,12 @@ def get_representative_cleavage_sites(tempfile):
         
     Returns
     -------
-    representative_FC_list : list of string
-        a list where each element is chromID_direction_representative_fc
+    representative_FC_list : dictionary of a list
+        a dictionary where each element 
+        key: chromosome
+        value: a list of chromID_direction_representative_fc
     """      
-    representative_FC_list = []
+    representative_FC_list = {}
     with open(tempfile, "r") as t:
         for line in t:          
             cluster_id = line.split()[3]
@@ -853,8 +799,12 @@ def get_representative_cleavage_sites(tempfile):
             direction = cluster_id.split(':')[2]
             
             representative_fc_concatenate = chromId + '_' + direction + '_' + representative_fc
-            representative_FC_list.append(representative_fc_concatenate)            
-    
+                        
+            if chromId not in representative_FC_list.keys():
+                representative_FC_list[chromId] = []
+            
+            representative_FC_list[chromId].append(representative_fc_concatenate)
+            
     return representative_FC_list
        
 def get_motif_info(input_directory):
@@ -916,7 +866,11 @@ def get_args():
     parser.add_argument('--peaks', dest = 'peaks',
                         required = True,
                         help = 'csv file that contains dictionary of key = motif, value = position of the peak in the frequency plot. based on gtf file')  
-  
+
+    parser.add_argument('--n_cores', dest = 'n_cores',
+                        required = True,
+                        help = 'the number of cores available')  
+        
     args = parser.parse_args()
     
     bed = args.bed
@@ -931,11 +885,13 @@ def get_args():
     downstream =  int(args.downstream)
     peaks = args.peaks
     
-    return bed, fasta_dir, out_name, annotated, window, motif_info_dir, downstream, peaks
+    n_cores = int(args.n_cores)
+    
+    return bed, fasta_dir, out_name, annotated, window, motif_info_dir, downstream, peaks, n_cores
 
 def run_process():
 
-    bed, fasta_dir, out_name, annotated, window, motif_info_dir, downstream, peaks = get_args()
+    bed, fasta_dir, out_name, annotated, window, motif_info_dir, downstream, peaks, n_cores = get_args()
         
     fasta_file = pysam.FastaFile(fasta_dir)
     motif_infos = get_motif_info(motif_info_dir) 
@@ -948,10 +904,14 @@ def run_process():
     print('successfully got total representative cleavage_sites.')
     
     print('total_representative_fixed_cleavage sites: ' + str(total_represenatative_fc))
-    
-    full_dataframe_all = get_full_dataframe(total_represenatative_fc, window, fasta_file, motif_infos, downstream)
+
+    with mp.Pool(n_cores) as pool:
+        result = pool.starmap(get_partial_dataframe, zip(total_represenatative_fc.values(), itertools.repeat(window),\
+                                                         itertools.repeat(fasta_dir), itertools.repeat(motif_infos), itertools.repeat(downstream)))
+
+        full_dataframe_all = pd.concat(result)
+        
     print('successfully got full dataframe_all')
-    
     print('full dataframe is: ' + str(full_dataframe_all))
 
     peaks_dictionary = read_peak_csvs(peaks)

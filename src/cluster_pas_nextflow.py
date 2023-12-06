@@ -1,3 +1,20 @@
+# -*- coding: utf-8 -*-
+"""
+
+Created on Sun Dec 19 22:55:32 2021
+
+@author: Youngbin Moon (y.moon@unibas.ch)
+"""
+
+
+
+
+
+
+
+
+
+
 import argparse
 import itertools
 from pathlib import Path
@@ -72,6 +89,7 @@ def _traverse_PAS(zipped: Tuple[Tuple[str, str], pd.DataFrame],
             group.loc[:,'end'] <= next_site.end + dist_end)
         # construct one BED entry for the coordinates
         # chr, name, strand already given.
+        
         entry = next_site.copy()
         entry.start = np.min(group.loc[ind,'start'])
         entry.end = np.max(group.loc[ind,'end'])

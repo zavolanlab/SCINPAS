@@ -150,7 +150,7 @@ def plot_linegraph_overlay(frequency_dictionary, motif_of_interest, up_bp, lengt
         key = position in bp
         value = frequency. (considering all fixed representative cleavage sites that has the motif)
         
-        e.g. if read_1 has the motif at -40, -30, -20 and if read_2 has motif at -30 and -20bp,
+        e.g. if representativeCleavageSite_1 has the motif at -40, -30, -20 and if representativeCleavageSite_2 has motif at -30 and -20bp,
         frequency_dict: -40: 1/3, -30: 5/6, -20: 5/6
         
     motif_of_interest : string
@@ -208,7 +208,7 @@ def plot_linegraph(frequency_dictionary, motif_of_interest, file, up_bp, length_
         key = position in bp
         value = frequency. (considering all representative cleavage sites that has the motif)
         
-        e.g. if read_1 has the motif at -40, -30, -20 and if read_2 has motif at -30 and -20bp,
+        e.g. if representativeCleavageSite_1 has the motif at -40, -30, -20 and if representativeCleavageSite_2 has motif at -30 and -20bp,
         frequency_dict: -40: 1/3, -30: 5/6, -20: 5/6
         
     motif_of_interest : string

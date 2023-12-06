@@ -65,7 +65,7 @@ def change_sample_name(sample, type_sample):
         number = sample.split('_')[2]
         new_sample_name = 'mouse' + str(number)
     
-    elif type_sample == "immune_cells":
+    elif type_sample == "immune":
         new_sample_name = sample.split('_')[1] + sample.split('_')[2]
     
     return new_sample_name
@@ -94,7 +94,7 @@ def run ():
 
     parser.add_argument('--sample_type', dest = 'sample_type',
                         required = True,
-                        help = 'Sample type: It should be either immune_cells or spermatocytes')
+                        help = 'Sample type: It should be either immune or spermatocytes')
                      
     args = parser.parse_args()
     

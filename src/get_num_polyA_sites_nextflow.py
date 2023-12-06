@@ -18,7 +18,7 @@ Created on Sun Dec 19 22:55:32 2021
 import argparse
 import csv
 import pandas as pd
-
+import multiprocessing as mp
 """
 Aim1 : Count the number of polyA sites in a given sample and in a given class 
 Aim2 : and save it in csv file.
@@ -78,12 +78,12 @@ def write_out(row_data, o_file):
     w = csv.writer(open(o_file, "w"))
     w.writerow(row_data)
 
-def num_polyA(bed_input, threshold):
+def num_polyA(bed, threshold):
     """
     Parameters
     ----------
-    bed_input : string
-        input directory towards the bed file which contains pA sites.
+    bed : bed file
+        a bed file which contains pA sites for a particular strand and chromosome.
         
     threshold : int
         threshold for scores of a pA site (cluster) in order to be considered as a true pA site.
@@ -93,10 +93,10 @@ def num_polyA(bed_input, threshold):
     num_polyA : int
         the number of pA sites within a bed file (specific sample, specific class)
     """            
-    bed = pd.read_csv(bed_input, delimiter = '\t', header = None)
-    bed.columns = ['seqid', 'start', 'end', 'id', 'score', 'strand']
+    print('bed: ' + str(bed))
     filtered_bed = bed[bed['score'] >= threshold].copy()
-    
+
+    print('filtered_bed: ' + str(filtered_bed))
     num_polyA = len(filtered_bed)
     
     return num_polyA
@@ -119,6 +119,10 @@ def get_args():
     parser.add_argument('--cluster_threshold', type = int, dest = 'cluster_threshold',
                         required = True,
                         help = 'a threshold on cluster size in order to be considered as a pA site') 
+
+    parser.add_argument('--n_cores', type = int, dest = 'n_cores',
+                        required = True,
+                        help = 'the number of cores available') 
     
     args = parser.parse_args()
     
@@ -127,16 +131,36 @@ def get_args():
     annotated = args.annotated 
     cluster_threshold = args.cluster_threshold
     
-    return bed_dir, csv_out_name, annotated, cluster_threshold
+    n_cores = args.n_cores
+    
+    return bed_dir, csv_out_name, annotated, cluster_threshold, n_cores
 
 def run_process():
 
-    bed_dir, csv_out_name, annotated, cluster_threshold = get_args()
+    bed_dir, csv_out_name, annotated, cluster_threshold, n_cores = get_args()
     print('successfully got arguments')
-                                 
-    num_polyA_sites = num_polyA(bed_dir, cluster_threshold)
-    print("successfully made dictionary" )
+        
+    bedfile = pd.read_csv(bed_dir, delimiter = '\t', header = None, names = ['seqid', 'start', 'end', 'id', 'score', 'strand'])
+        
+    groupedByChrStrand = bedfile.groupby(['seqid', 'strand'])
+    splitted_dataframes = [group for name, group in groupedByChrStrand]
+    # set the number of cores available
+    pool = mp.Pool(n_cores)
     
+    # call apply_async() without callback
+    result_objects = [pool.apply_async(num_polyA, args = (splitted_df, cluster_threshold)) for splitted_df in splitted_dataframes]
+
+    # result_objects is a list of pool.ApplyResult objects
+    overlap_results = [r.get() for r in result_objects]
+    
+    print("successfully got num_pA" )
+    
+    pool.close()
+    pool.join()
+
+    num_polyA_sites = sum(overlap_results)
+    
+    print('successfully got total num_pA')
     # e.g. 10X_P4_7
     sample_name = '_'.join(csv_out_name.split('_')[0:3])
     if "UmiDedup" in sample_name:

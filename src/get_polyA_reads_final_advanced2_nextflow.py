@@ -1,23 +1,32 @@
 # -*- coding: utf-8 -*-
 """
 
-Created on Sun Jan  9 07:02:13 2022
+Created on Sun Jan 23 07:02:13 2022
 
 @author: Youngbin Moon (y.moon@unibas.ch)
 """
 
+
+
+
+
+
+
+
+
+
 import pysam
 import argparse
-
-
-
-
-
-
+import re
+import statistics
+import numpy as np
+import pandas as pd
+import time
+import tracemalloc
 """
 Aim : From deduplicated bam file of a given sample, collect all polyA reads
 and save it to a new bam file.
-"""
+"""    
 def write_output(final_reads, o_name, o_mode, bam):
     """
     Parameters
@@ -42,6 +51,65 @@ def write_output(final_reads, o_name, o_mode, bam):
     outfile = pysam.AlignmentFile(o_name, o_mode, template=bam)
     for read in final_reads:
         outfile.write(read)
+
+def get_median_phred_polyA(r, is_fc):
+    
+    rev = r.is_reverse
+    tuples = r.cigartuples
+    left_end = tuples[0]
+    right_end = tuples[-1]
+    
+    if rev == True:
+        if not is_fc:
+            qualities = r.get_forward_qualities()
+            len_pA = left_end[1]
+            len_read = len(qualities)
+            
+            mapped_qualities = qualities[0 : len_read - len_pA]
+            softclipped_qualities = qualities[len_read - len_pA : len_read]
+        
+        elif is_fc:
+            qualities = r.get_forward_qualities()
+            OCS = r.get_tag('XO')
+            FCS = r.get_tag('XF')
+            difference = OCS - FCS
+            assert(difference >= 0)
+            # length of a softclipped region
+            len_pA = left_end[1] - difference
+            len_read = len(qualities)
+            
+            mapped_qualities = qualities[0 : len_read - len_pA]
+            softclipped_qualities = qualities[len_read - len_pA : len_read]
+            
+    else:
+        if not is_fc:
+            qualities = r.get_forward_qualities()
+            len_pA = right_end[1]
+            len_read = len(qualities)
+            
+            mapped_qualities = qualities[0 : len_read - len_pA]
+            softclipped_qualities = qualities[len_read - len_pA : len_read]  
+  
+        elif is_fc:
+            qualities = r.get_forward_qualities()
+            OCS = r.get_tag('XO')
+            FCS = r.get_tag('XF')
+            difference = FCS - OCS
+            assert(difference >= 0)
+            # length of a softclipped region
+            len_pA = right_end[1] - difference
+            len_read = len(qualities)
+            
+            mapped_qualities = qualities[0 : len_read - len_pA]
+            softclipped_qualities = qualities[len_read - len_pA : len_read]
+    
+    phred_median_mapped = statistics.median(mapped_qualities)
+    phred_median_softclipped = statistics.median(softclipped_qualities)
+    
+    print('length of the mapped part of a read: ' + str(len(mapped_qualities)))
+    print('length of the softclipped part of a read: ' + str(len(softclipped_qualities)))
+    
+    return phred_median_mapped, phred_median_softclipped
         
 def count_A(sub_sequence):
     """
@@ -133,6 +201,8 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             OCS = read.get_tag('XO')
             FCS = read.get_tag('XF')
             difference = OCS - FCS
+            assert(difference >= 0)
+            
             potential_polyA = full_sequence[len(full_sequence) - left_end[1] + difference : len(full_sequence)]
             # length of a softclipped region
             len_pA = left_end[1] - difference
@@ -165,6 +235,8 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             OCS = read.get_tag('XO')
             FCS = read.get_tag('XF')
             difference = FCS - OCS
+            assert(difference >= 0)
+            
             potential_polyA = full_sequence[len(full_sequence) - right_end[1] + difference : len(full_sequence)]
             # length of a softclipped region
             len_pA = right_end[1] - difference
@@ -227,6 +299,8 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
     """       
     polyA_reads = []
     non_polyA_reads = []
+    low_quality_pA_reads = []
+    
     for read in sam.fetch():
         # list of tuples where each element is tuple.
         # assume soft clipp happens either left end, right end or both ends. it cant be softclipped in the middle.
@@ -239,7 +313,14 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
         if left_end[0] == 4 or right_end[0] == 4:           
             is_polyA = check_polyA(read, left_end, right_end, percentage_threshold, length_threshold, use_FC)
             if is_polyA:
-                polyA_reads.append(read)               
+                phred_median_mapped, phred_median_softclipped = get_median_phred_polyA(read, use_FC)
+                # filter pA reads with median sequence quality score of mapped and softclipped.
+                if phred_median_mapped > 30 and phred_median_softclipped > 30:    
+                    polyA_reads.append(read)
+                    
+                else:
+                    low_quality_pA_reads.append(read)
+                    
             # 3 possiblities not to have a polyA tail
             # 1) dont have soft clipped part at all
             # 2) soft clipped part in the wrong direction
@@ -251,14 +332,14 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
         elif left_end[0] != 4 and right_end[0] != 4:
             non_polyA_reads.append(read)
             
-    return polyA_reads, non_polyA_reads
+    return polyA_reads, non_polyA_reads, low_quality_pA_reads
 
 def get_all_polyA_input():
     
-    parser = argparse.ArgumentParser(description="get full polyA reads")
+    parser = argparse.ArgumentParser(description="get filtered polyA reads, nonpolyA reads and full polyA reads")
     parser.add_argument('--bam_input', dest = 'bam_input',
                         required = True,
-                        help = 'full deduplicated bam file in which the alignment is fixed')
+                        help = 'partial deduplicated bam file in which the alignment is fixed')
     
     parser.add_argument('--o_polyA', dest = 'o_polyA',
                         required = True,
@@ -301,26 +382,46 @@ def get_all_polyA_input():
     length_threshold = args.length_threshold
     
     use_fc = bool(int(args.use_fc))
-    
+    number = re.split('_chr', bamFile)[1].split('_')[0]
+        
     return sam, out_mode, fasta_file, out_polyA, out_non_polyA,\
-            percentage_threshold, length_threshold, use_fc
+            percentage_threshold, length_threshold, use_fc, number
 
 def run_process():
+    start = time.time()
+    # starting the monitoring
+    tracemalloc.start()
     
     sam, out_mode, fasta_file, out_polyA, out_non_polyA,\
-    percentage_threshold, length_threshold, use_fc = get_all_polyA_input()
+    percentage_threshold, length_threshold, use_fc, number = get_all_polyA_input()
     print('successfully got inputs')
     
-    polyA_reads, non_polyA_reads = find_polyA_seq(sam, percentage_threshold, length_threshold, 
-                                                   fasta_file, use_fc)
+    polyA_reads, non_polyA_reads, low_quality_pA_reads = \
+    find_polyA_seq(sam, percentage_threshold, length_threshold, fasta_file, use_fc)
     print('successfully got all polyA reads')
     
-    write_output(polyA_reads, out_polyA, out_mode, sam)
+    corrected_out_polyA = out_polyA.split('.')[0] + '_chr' + str(number) + '.bam'
+    corrected_out_non_polyA = out_non_polyA.split('.')[0] + '_chr' + str(number) + '.bam'
+    corrected_out_low_q_polyA = out_polyA.split('.')[0] + '_lowQualityChrom' + str(number) + '.bam'
+    
+    write_output(polyA_reads, corrected_out_polyA, out_mode, sam)
     print('successfully got all polyA reads bamfile')
     
-    write_output(non_polyA_reads, out_non_polyA, out_mode, sam)
+    write_output(non_polyA_reads, corrected_out_non_polyA, out_mode, sam)
     print('successfully got all nonpolyA reads bamfile')
+    
+    write_output(low_quality_pA_reads, corrected_out_low_q_polyA, out_mode, sam)
+    print('successfully got all low quality polyA reads bamfile')
         
+    end = time.time()
+    print('elapsed time: ' + str(end - start))
+    
+    # displaying the memory
+    print('memory usage is: ' + str(tracemalloc.get_traced_memory()))
+    
+    # stopping the library
+    tracemalloc.stop()
+    
 if __name__ == "__main__":    
     run_process()
     print('success')

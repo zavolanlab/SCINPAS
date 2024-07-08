@@ -2,58 +2,52 @@
 
 nextflow.enable.dsl=2
 
-include {FIND_TERMINAL_EXONS} from './processes_advanced'
-include {FIND_EXONS_GENES_BED} from './processes_advanced'
-include {polyA} from './polyA_workflow_advanced'
+include {FIND_TERMINAL_EXONS} from './processes_all_samples'
+include {FIND_EXONS_GENES_BED} from './processes_all_samples'
+include {polyA_all_samples} from './polyA_workflow_advanced_all_samples'
 
 workflow{
-
-	// To get different inputs, chromosomes and negative controls
-	// according to the species.
-	if(params.sample_type == "mouse"){
+	
+	if(params.check == "yes"){
 		inputs = Channel
-			.fromPath(params.mouse_input_dir)
-			.map { file -> file.baseName }
+			.fromPath(params.samples_list)
+			.splitCsv(header: true)
+			.map {row -> tuple(row.dir, row.sample, row.organ)}
+	}
+
+	else if(params.check == "no"){
+		inputs = Channel
+			.fromPath(params.filtered_samples_list)
+			.splitCsv(header: true)
+			.map {row -> tuple(row.dir, row.sample, row.organ)}
+	}
+
+	our_terminal_exons = FIND_TERMINAL_EXONS(params.extended_annotation, params.find_terminal_exons_script)
+	(our_exons, our_genes) = FIND_EXONS_GENES_BED(params.extended_annotation, params.find_exons_genes_script)		
+	
+	// To get different chromosomes according to the species.
+	if(params.sample_type == "mouse"){
 
 		chrs = Channel.fromList(params.mouse_chromosomes)
-
-		negative_control_dedup = Channel
-					.fromPath(params.mouse_negative_control_dir)
-					.map { file -> file.baseName }
-
-		negative_control_raw = Channel
-					.fromPath(params.mouse_negative_control_raw)
-					.map { file -> file.baseName }
-		
 		// 1 ~ 19 + X + Y
 		num_chromosomes = 21		
 	}
 
 	else if(params.sample_type == "human"){
-		inputs = Channel
-			.fromPath(params.human_input_dir)
-			.map { file -> file.baseName }	
 
 		chrs = Channel.fromList(params.human_chromosomes)	
-
-		negative_control_dedup = Channel
-				.fromPath(params.human_negative_control_dir)
-				.map { file -> file.baseName }
-
-		negative_control_raw = Channel
-				.fromPath(params.human_negative_control_raw)
-				.map { file -> file.baseName }
-		
 		// 1 ~ 22 + X + Y
 		num_chromosomes = 24
 	}
-	
-	// Get different terminal exons.bed, exons.bed and genes.bed according to the sample type. (This is done automatically behind the scene. no need to do if phrase)
-	// Get terminal exons.bed
-	terminal_exons = FIND_TERMINAL_EXONS(params.find_terminal_exons_script)
-	// Get exons.bed and genes.bed
-	(exons, genes) = FIND_EXONS_GENES_BED(params.find_exons_genes_script)
 
-	polyA(inputs, chrs, terminal_exons, exons, genes, negative_control_dedup, negative_control_raw, num_chromosomes)
+	else if(params.sample_type == "worm"){
+
+		chrs = Channel.fromList(params.worm_chromosomes)	
+		// "I" ~ "V" + "X"
+		num_chromosomes = 6
+	}
+
+	polyA_all_samples(inputs, chrs, our_terminal_exons, our_exons, our_genes, num_chromosomes)	
+
 }
 

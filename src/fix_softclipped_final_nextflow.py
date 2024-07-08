@@ -15,7 +15,7 @@ import numpy as np
 import math
 import statistics
 import csv
-
+import re
 """
 Aim1 : From deduplicated bam file of a sample, create a new deduplicated bam file
 in which their alignments are fixed.
@@ -425,26 +425,33 @@ def get_inputs():
     fasta = pysam.FastaFile(fasta_dir)
             
     bam_out = args.bam_out
-    
-    return bam, fasta, bam_out
+    number = re.split('_chr', bamFile)[1].split('_')[0]
+    return bam, fasta, bam_out, number
         
 def run_process():
     
-    bam, fasta, bam_out = get_inputs()
+    bam, fasta, bam_out, number = get_inputs()
     print('successfully got inputs')
+    
+    corrected_bam_out = bam_out + '_chr' + number + '.bam'
     
     changed_reads, num_fixed, num_unfixed = fix_soft_clipped(bam, fasta)
     print('successfully added new tags')
     print('successfully got dictionary of new cleavage_sites')
     
-    write_output(changed_reads, bam_out, "wb", bam)
+    write_output(changed_reads, corrected_bam_out, "wb", bam)
     print('successfully wrote a new bam file')
     
     total = num_fixed + num_unfixed
-    percentage = (num_fixed*100)/total
+    
+    if total == 0:
+        percentage = 0
+        
+    else:    
+        percentage = (num_fixed*100)/total
     
     row = [total, num_fixed, num_unfixed, percentage]
-    out_file = "num_fixed_unfixed.csv"
+    out_file = "num_fixed_unfixed" + "_" + number + ".csv"
     
     write_csv(row, out_file)
     print('successfully saved the number of corrected/uncorrected soft clipped reads')

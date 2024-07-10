@@ -86,7 +86,17 @@ def intersect(pas_dir, genes_dir):
     
     intersect_df = df[['pas_seqid', 'pas_start', 'pas_end', 'pas_id', 'pas_score', 'pas_strand', 'pas_class', 'gene_id']]
     
-    return intersect_df
+    final_intersect_df = change_header(intersect_df)
+    print('successfully changed the header')
+    
+    no_intersection = pas_bed.intersect(genes_bed, s= True, wa = True, v = True)
+    no_intersect_df = pd.read_table(no_intersection.fn, header = None, names = ['seqid', 'start', 'end', 'id', 'score', 'strand', 'class'])
+    no_intersect_df['gene_id'] = 'not_available'
+    
+    df_final = pd.concat([final_intersect_df, no_intersect_df], ignore_index = True)
+    df_final.sort_values(by = ['seqid', 'start', 'end', 'id', 'strand'], inplace = True)
+    
+    return df_final
 
 def get_args():        
     parser = argparse.ArgumentParser(description="assign gene name that PAS belongs to ")
@@ -120,14 +130,11 @@ def run_process():
     pas, genes, out_template = get_args()
     print('successfully got arguments')
     
-    intersect_df = intersect(pas, genes)
-    print('successfully got intersected df')
-    
-    final_intersect_df = change_header(intersect_df)
-    print('successfully changed the header')
-    
+    final_df = intersect(pas, genes)
+    print('successfully got final df')
+        
     out_name = out_template + '_intersect_out.bed'
-    write_to_bed(final_intersect_df, out_name)
+    write_to_bed(final_df, out_name)
     print('successfully saved the result')
     
 if __name__ == "__main__":

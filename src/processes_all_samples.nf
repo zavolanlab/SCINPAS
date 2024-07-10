@@ -33,7 +33,7 @@ process FIND_TERMINAL_EXONS{
 	label "custom_python"
 	label "short_time"
 	label "middle_memory"
-	cpus = params.super_heavy_cores
+	cpus = params.heavy_cores
 	publishDir "${params.folder_template}/result/${params.sample_type}/common", mode: 'copy'
 
 	input:
@@ -45,7 +45,7 @@ process FIND_TERMINAL_EXONS{
 
 	script:
 	"""
-	python3 ${python_script} --gtf_file ${input_gtf} --bed_out ${params.terminal_exons_out} --custom ${params.custom} --n ${params.super_heavy_cores}
+	python3 ${python_script} --gtf_file ${input_gtf} --bed_out ${params.terminal_exons_out} --custom ${params.custom} --n ${params.heavy_cores}
 	"""
 }
 
@@ -160,7 +160,8 @@ process SPLIT_PHASE1_CATALOG{
 	echo true
 	label "samtools"
 	label "short_time"
-	memory {10.GB * task.attempt}
+	label "middle_memory"
+	memory {40.GB * task.attempt}
 	cpus = params.middle_cores
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
@@ -341,7 +342,8 @@ process SPLIT_FILTERED_DEDUP_CATALOG{
 	echo true
 	label "samtools"
 	label "short_time"
-	memory {10.GB * task.attempt}
+	label "middle_memory"
+	memory {40.GB * task.attempt}
 	cpus = params.middle_cores
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
@@ -515,7 +517,8 @@ process SPLIT_PHASE2_CATALOG{
 	echo true
 	label "samtools"
 	label "short_time"
-	memory {10.GB * task.attempt}
+	label "middle_memory"
+	memory {40.GB * task.attempt}
 	cpus = params.middle_cores
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5

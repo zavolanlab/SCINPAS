@@ -274,7 +274,12 @@ def extract_sequences(Read, fasta):
         # start_point should be smaller than the end_point to extract genomic sequence
         end_point = int(refStart) - 1
         start_point = int(refStart)  - left_end[1]
-                
+        if start_point < 0 or end_point < 0:
+            print('refStart: ' + str(refStart))
+            print('left_end[1]: ' + str(left_end[1]))
+            print('read_softclipped: ' + str(full_sequence[0 : left_end[1]]))
+            return None, None, None # Return None if out-of-boundary
+        
         genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
         read_softclipped = full_sequence[0 : left_end[1]]
         # print("read softclipped (-) is: " + str(read_softclipped))
@@ -295,6 +300,13 @@ def extract_sequences(Read, fasta):
         full_sequence = Read.get_forward_sequence()
         start_point = int(refEnd) + 1
         end_point = int(refEnd) + right_end[1]
+        chromosome_length = fasta.get_reference_length(chromosome)
+        if end_point > chromosome_length or start_point > chromosome_length:
+            print('refEnd: ' + str(refEnd))
+            print('right_end[1]: ' + str(right_end[1]))
+            print('read_softclipped: ' + str(full_sequence[len(full_sequence) - right_end[1] : len(full_sequence)]))
+            print('chromosome_length: ' + str(chromosome_length))
+            return None, None, None # Return None if out-of-boundary
         
         genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
         read_softclipped = full_sequence[len(full_sequence) - right_end[1] : len(full_sequence)]
@@ -350,17 +362,22 @@ def fix_soft_clipped(sam, fasta_file):
         
         # soft clipped read. candidate for being corrected.
         if rev == True and left_end[0] == 4:
-            genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)          
-            n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
-            
-            cleavage_site = int(refStart)
-            fixed_cleavage_site = cleavage_site - n_proceed
-
-            if cleavage_site_fixed == True:
-                num_fixed += 1
+            genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)
+            if genome_sequence is None and read_softclipped is None and threshold is None: # Handling out-of-boundary case
+                cleavage_site = int(refStart)
+                fixed_cleavage_site = cleavage_site
+                num_unfixed += 1
             
             else:
-                num_unfixed += 1        
+                n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
+                cleavage_site = int(refStart)
+                fixed_cleavage_site = cleavage_site - n_proceed
+    
+                if cleavage_site_fixed == True:
+                    num_fixed += 1
+                
+                else:
+                    num_unfixed += 1        
                 
         # if there is no softclipped region, use original cleavage site.
         # because there isnt a thing to extend mapped region.
@@ -370,18 +387,22 @@ def fix_soft_clipped(sam, fasta_file):
             
         # soft clipped read. candidate for being corrected.
         elif rev == False and right_end[0] == 4:
-            genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)          
-            n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
-            
-            cleavage_site = int(refEnd)
-            
-            fixed_cleavage_site = cleavage_site + n_proceed
-            
-            if cleavage_site_fixed == True:
-                num_fixed += 1
+            genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)
+            if genome_sequence is None and read_softclipped is None and threshold is None: # Handling out-of-boundary case
+                cleavage_site = int(refEnd)
+                fixed_cleavage_site = cleavage_site
+                num_unfixed += 1
             
             else:
-                num_unfixed += 1      
+                n_proceed, cleavage_site_fixed = find_positions_to_fix(genome_sequence, read_softclipped, threshold, rev)
+                cleavage_site = int(refEnd)
+                fixed_cleavage_site = cleavage_site + n_proceed
+                
+                if cleavage_site_fixed == True:
+                    num_fixed += 1
+                
+                else:
+                    num_unfixed += 1      
                 
         # if there is no softclipped region, use original cleavage site.
         # because there isnt a thing to extend mapped region.        

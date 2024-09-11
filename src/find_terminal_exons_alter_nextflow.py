@@ -117,85 +117,30 @@ def get_last_exons(exons_df, n_cores):
     
     return all_last_exons_df
 
-def modify_format(df):
-  
-    gene_exon_df = df[df['feature'] == 'exon']
-    
-    attributes = np.asarray(gene_exon_df['attribute'])
-    gene_ids = []
-    gene_types = []
-    gene_names = []    
-    transcript_ids = []
-    exon_numbers = []
-    exon_ids = []
-    
-    new_df = gene_exon_df.copy()
-    for elem in attributes:
-        # 1 element of attributes array
-        each_attributes = elem.split(';')[0:-1]
-
-        # within each element, you have several attributes (e.g. gene_id)
-        for each_attribute in each_attributes:
-            if 'gene_id' in each_attribute:
-                gene_id = each_attribute.split(' ')[1]
-                gene_ids.append(gene_id)
-
-            elif 'transcript_id' in each_attribute:
-                transcript_id = each_attribute.split(' ')[2]
-                transcript_ids.append(transcript_id)
-                
-            elif 'gene_type' in each_attribute:
-                gene_type = each_attribute.split(' ')[2]
-                gene_types.append(gene_type)
-            
-            elif 'gene_name' in each_attribute:
-                gene_name = each_attribute.split(' ')[2]
-                gene_names.append(gene_name)
-
-            elif 'exon_number' in each_attribute:
-                exon_number = each_attribute.split(' ')[2]
-                exon_numbers.append(exon_number)
-            
-            elif 'exon_id' in each_attribute:
-                exon_id = each_attribute.split(' ')[2]
-                exon_ids.append(exon_id)            
-                                         
-    new_df['gene_id'] = gene_ids
-    new_df['transcript_id'] = transcript_ids
-    new_df['gene_type'] = gene_types
-    new_df['gene_name'] = gene_names
-    new_df['exon_number'] = exon_numbers
-    new_df['exon_id'] = exon_ids
-    
-    new_df.drop('attribute', inplace=True, axis=1)
-    return new_df
-
-def read_file (input_dir, custom):
+def read_file (input_dir, species):
     """
     Parameters
     ----------
     input_dir : str
         directory towards input genes.gtf file.
-        
-    custom : bool
-        whether to use our custom gtf or not
-        
+                
     Returns
     -------
     input_df : dataframe
         dataframe that contains genes.gtf infomation.
     """
+            
+    intermediate_df = read_gtf(input_dir)
+    exon_df = intermediate_df[intermediate_df['feature'] == 'exon']
     
-    if custom:
-        intermediate_df = pd.read_csv(input_dir, sep='\t',\
-                              names = ['seqname', 'source', 'feature', 'start', 'end', 'transcript_support_level', 'strand', 'frame', 'attribute'], low_memory = False)
-        input_df = modify_format(intermediate_df)
-        # print('input_df: ' + str(input_df))
+    if species == 'worm':
+        input_df = exon_df[['seqname', 'source', 'feature', 'start', 'end', 'strand', 'frame', 'gene_id', 'transcript_id', 'gene_biotype', 'gene_name', 'exon_number', 'exon_id']]
+        # worm gtf does not have transcript_support_level
+        input_df['transcript_support_level'] = 2300
         
     else:
-        intermediate_df = read_gtf(input_dir)
-        exon_df = intermediate_df[intermediate_df['feature'] == 'exon']
         input_df = exon_df[['seqname', 'source', 'feature', 'start', 'end', 'transcript_support_level', 'strand', 'frame', 'gene_id', 'transcript_id', 'gene_type', 'gene_name', 'exon_number', 'exon_id']]
+    
     return input_df
     
 def get_terminal_args():
@@ -207,14 +152,14 @@ def get_terminal_args():
     parser.add_argument('--bed_out', dest = 'bed_out',
                         required = True,
                         help = 'output bed file')    
-
-    parser.add_argument('--custom', dest = 'custom',
-                        required = True,
-                        help = 'whether to use custom gtf or not')   
     
     parser.add_argument('--n', dest = 'n',
                         required = True,
                         help = 'number of cores')
+
+    parser.add_argument('--species', dest = 'species',
+                        required = True,
+                        help = 'species')
     
     args = parser.parse_args()
     return args
@@ -223,19 +168,20 @@ def get_inputs():
     args = get_terminal_args()
     input_dir = args.gtf_file
     output_file = args.bed_out
-    do_custom = bool(int(args.custom))
     n = int(args.n)
-    
+    species = args.species
     # input_dir = r"C:/Users/Geniu/Desktop/success/NEXT_PROJECT_CATALOG/SCINPAS_ALL_SAMPLES/temp_results/240126/extended_merged_noNA_recovered_gtf.gtf"  
     # output_file = r"C:/Users/Geniu/Downloads/sample_TE_removed_duplicate_final.bed"
     # do_custom = True
     # n = 4
-
-    return input_dir, output_file, do_custom, n
+    return input_dir, output_file, n, species
 
 def run_process():
-    i_dir, o_file, do_custom, n = get_inputs()
-    dataframe = read_file(i_dir, do_custom)
+    i_dir, o_file, n, species = get_inputs()
+    print('successfully got inputs')
+    
+    dataframe = read_file(i_dir, species)
+    print('successfully read the file')
     
     result_df = get_last_exons(dataframe, n)
     print('successfully got terminal exons and starting deduplication of exons......')

@@ -24,7 +24,7 @@ process FIND_EXONS_GENES_BED{
 	--gtf_dir ${input_gtf}\
 	--genes_bed_out ${params.genes_bed_out}\
 	--exons_bed_out ${params.exons_bed_out}\
-	--custom ${params.custom}
+	--species ${params.sample_type}
 	"""
 }
 
@@ -45,7 +45,7 @@ process FIND_TERMINAL_EXONS{
 
 	script:
 	"""
-	python3 ${python_script} --gtf_file ${input_gtf} --bed_out ${params.terminal_exons_out} --custom ${params.custom} --n ${params.heavy_cores}
+	python3 ${python_script} --gtf_file ${input_gtf} --bed_out ${params.terminal_exons_out} --n ${params.heavy_cores} --species ${params.sample_type}
 	"""
 }
 
@@ -166,7 +166,7 @@ process SPLIT_PHASE1_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 	
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas}-${organs}/multimap_filtered", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas}-${organs}/multimap_filtered", mode: 'copy'
 
 	input:
 	tuple path(bam), path(bai), val(scinpas), val(organs), val(chrom)
@@ -180,7 +180,17 @@ process SPLIT_PHASE1_CATALOG{
 	# samtools sort ${scinpas}-${organs}_intermediate_${chrom}.bam -o ${scinpas}-${organs}_possorted_${chrom}.bam
 	# samtools index ${scinpas}-${organs}_possorted_${chrom}.bam
 
-	samtools view -@ ${params.middle_cores} -bh ${bam} chr${chrom} | samtools sort -@ ${params.middle_cores} - -o ${scinpas}-${organs}_possorted_${chrom}.bam
+	# Determine chromosome format based on species
+	if [[ "${params.sample_type}" == "worm" ]]
+	then
+		CHROM_FORMAT=${chrom}
+	else
+		CHROM_FORMAT="chr${chrom}"
+	fi
+
+	# echo "Using CHROM_FORMAT: \${CHROM_FORMAT}"
+
+	samtools view -@ ${params.middle_cores} -bh ${bam} \${CHROM_FORMAT} | samtools sort -@ ${params.middle_cores} - -o ${scinpas}-${organs}_possorted_${chrom}.bam
 	samtools index -@ ${params.middle_cores} ${scinpas}-${organs}_possorted_${chrom}.bam
 	"""         
 }
@@ -199,7 +209,7 @@ process DEDUP_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas}-${organs}/trimming_and_deduplication", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas}-${organs}/trimming_and_deduplication", mode: 'copy'
 
 	input:
 	tuple path(bam), path(bai), val(scinpas), val(organs)
@@ -230,7 +240,7 @@ process SORT_PHASE1_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas}-${organs}/trimming_and_deduplication", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas}-${organs}/trimming_and_deduplication", mode: 'copy'
 	
 	input:
 	tuple path(bams), val(scinpas), val(organs)
@@ -257,7 +267,7 @@ process MERGE_DEDUP_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/trimming_and_deduplication", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/trimming_and_deduplication", mode: 'copy'
 	
 	// input channel looks like: [([bam1, bam2...... bam6.....bamY], sample1), ([bam1, bam2...... bam6.....bamY], sample2)]
 	// this is to merge once and only once rather than merging several times
@@ -337,36 +347,6 @@ process FASTQC_SWARM_PLOT_CATALOG{
 	"""         
 }
 
-process SPLIT_FILTERED_DEDUP_CATALOG{
-	
-	echo true
-	label "samtools"
-	label "short_time"
-	label "middle_memory"
-	memory {40.GB * task.attempt}
-	cpus = params.middle_cores
-	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
-	maxRetries 5
-	
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/trimming_and_deduplication", mode: 'copy'
-
-	input:
-	tuple val(scinpas_organs), path(bam), path(bai), val(organ), val(count), val(chrom)
-
-	output:
-	tuple path("${scinpas_organs}_selected_deduplicated_chr*_sorted.bam"), path("${scinpas_organs}_selected_deduplicated_chr*_sorted.bam.bai"), val("${scinpas_organs}")
-
-	script:
-	"""
-	# samtools view -bh ${bam} chr${chrom} -o ${scinpas_organs}_selected_deduplicated_chr${chrom}.bam
-	# samtools sort ${scinpas_organs}_selected_deduplicated_chr${chrom}.bam -o ${scinpas_organs}_selected_deduplicated_chr${chrom}_sorted.bam
-	# samtools index ${scinpas_organs}_selected_deduplicated_chr${chrom}_sorted.bam
-
-	samtools view -@ ${params.middle_cores} -bh ${bam} chr${chrom} | samtools sort -@ ${params.middle_cores} - -o ${scinpas_organs}_selected_deduplicated_chr${chrom}_sorted.bam
-	samtools index -@ ${params.middle_cores} ${scinpas_organs}_selected_deduplicated_chr${chrom}_sorted.bam
-	"""         
-}
-
 process FIX_SOFTCLIPPED_REGION_CATALOG{
 	
 	label "custom_python"
@@ -375,7 +355,7 @@ process FIX_SOFTCLIPPED_REGION_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 6
 	
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/trimming_and_deduplication", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/trimming_and_deduplication", mode: 'copy'
 
 	input:
 	tuple path(bam), path(bai), val(scinpas_organs)
@@ -431,7 +411,7 @@ process GET_POLYA_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/get_polyA", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/get_polyA", mode: 'copy'
 	
 	input:
 	// for each specific sample, run python script
@@ -465,7 +445,7 @@ process MERGE_POLYA_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/get_polyA", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/get_polyA", mode: 'copy'
 	
 	// input channel looks like: [([bam1, bam2...... bam6.....bamY], sample1), ([bam1, bam2...... bam6.....bamY], sample2)]
 	// this is to merge once and only once rather than merging several times
@@ -534,7 +514,15 @@ process SPLIT_PHASE2_CATALOG{
 
 	script:
 	"""	
-	samtools view -@ ${params.middle_cores} -bh ${bam} chr${chrom} | samtools sort -@ ${params.middle_cores} - -o  ${scinpas_organs}_${out_name}_sorted_${chrom}.bam
+	# Determine chromosome format based on species
+	if [[ "${params.sample_type}" == "worm" ]]
+	then
+		CHROM_FORMAT=${chrom}
+	else
+		CHROM_FORMAT="chr${chrom}"
+	fi
+
+	samtools view -@ ${params.middle_cores} -bh ${bam} \${CHROM_FORMAT} | samtools sort -@ ${params.middle_cores} - -o  ${scinpas_organs}_${out_name}_sorted_${chrom}.bam
 	samtools index -@ ${params.middle_cores} ${scinpas_organs}_${out_name}_sorted_${chrom}.bam
 	"""         
 }
@@ -547,7 +535,7 @@ process GET_POLYA_UNIQUE_CLEAVAGE_SITES_CATALOG{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 	
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/split_bed_clustering", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/split_bed_clustering", mode: 'copy'
 	
 	input:
 	tuple path(bams), path(bais), path(polyA_count_csv), val(scinpas_organs), val(chrom)
@@ -591,7 +579,7 @@ process SPLIT_BY_DIRECTION{
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 5
 	
-	// publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/further_split_bed_clustering", mode: 'copy'
+	publishDir "${params.folder_template}/result/${params.sample_type}/${params.version}/${scinpas_organs}/further_split_bed_clustering", mode: 'copy'
 	
 	input:
 	tuple path(beds), val(scinpas_organs), val(chromosome), val(direction)
@@ -682,9 +670,9 @@ process GET_INTRONIC_BED{
 
 	label "custom_python"
 	label "short_time"
-	label "middle_memory"
+	label "super_heavy_memory"
 	cpus = params.heavier_cores
-	memory {60.GB * task.attempt}
+	memory {250.GB * task.attempt}
 	errorStrategy {task.exitStatus in 137..140 ? 'retry' : 'terminate'}
 	maxRetries 6
 
@@ -703,7 +691,7 @@ process GET_INTRONIC_BED{
 	python3 ${python_script}\
 	--exon_bed ${exons}\
 	--out_name ${out_name}\
-	--n ${params.mega_heavy_cores}
+	--n ${params.heavier_cores}
 	"""
 }
 

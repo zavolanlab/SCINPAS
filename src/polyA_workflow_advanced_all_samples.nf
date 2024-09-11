@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 //import and make alias. need to make alias because process can be invoked once and only once
 include {PREPARE_IN_SLC_CATALOG; FILTER_MULTIMAPPING_CATALOG; CONCAT_CSVS_CATALOG; MODIFY_TUPLE;\
-SPLIT_PHASE1_CATALOG; DEDUP_CATALOG; MERGE_DEDUP_CATALOG; FASTQC_CATALOG; FASTQC_SWARM_PLOT_CATALOG; SPLIT_FILTERED_DEDUP_CATALOG; FIX_SOFTCLIPPED_REGION_CATALOG;\
+SPLIT_PHASE1_CATALOG; DEDUP_CATALOG; MERGE_DEDUP_CATALOG; FASTQC_CATALOG; FASTQC_SWARM_PLOT_CATALOG; FIX_SOFTCLIPPED_REGION_CATALOG;\
 MERGE_POLYA_CATALOG; GET_COUNTS_CATALOG; GET_POLYA_UNIQUE_CLEAVAGE_SITES_CATALOG; SPLIT_BY_DIRECTION; GROUPBY_BED_CATALOG; PERFORM_CLUSTERING_CATALOG; GET_INTRONIC_BED;\
 CHANGE_BED; ADD_CLASS_COLUMN; GENE_ID; LEFT_JOIN_CATALOG; GET_ORGAN_SCORE; MERGE_ORGAN_SCORE_TO_PAS; RCS_MOTIF_CHECK;
 CONVERT_GZIP_UNIQUE_CS; CONVERT_GZIP_ALL_SAMPLES_UNIQUE_CS} from './processes_all_samples'
@@ -68,7 +68,7 @@ workflow polyA_all_samples{
 		// resulting tuple = (sample, organ, bam, bai, percentage, dir)
 		// join allows to only keep samples that match (and hence filtering) 
 		first_filtered_full_data = mapq_filtered_full_data_tuple.join(first_filtered_samples, by: [2, 3])
-		first_filtered_full_data.view()
+		// first_filtered_full_data.view()
 		
 		n_first_filtered_samples = first_filtered_full_data.count()
 		n_first_filtered_samples.view()
@@ -190,40 +190,34 @@ workflow polyA_all_samples{
 
 		pas_w_geneid = GENE_ID(additional_col_all_pas_merged, our_genes, params.gene_id_pas_out, params.gene_id_alter_nextflow_script)
 
-		if(params.sample_type == "mouse" || params.sample_type == "human"){
-			/////////////////////////////////////////////////////////////////////////
-			//////////////////////////// Group PAS by organs ///////////////////////
+		/////////////////////////////////////////////////////////////////////////
+		//////////////////////////// Group PAS by organs ///////////////////////
 
-			// Grouping with same chromosome, direction and organ
-			// to generate organ specific PAS and organ specific modified_unique_cs_beds for a particular chromosome and direction.
+		// Grouping with same chromosome, direction and organ
+		// to generate organ specific PAS and organ specific modified_unique_cs_beds for a particular chromosome and direction.
 
-			// get() gets each element of the tuple/list. 0-based index
-			// tokenize('-') means split string by '-' so that you can get organ out of scinpas-organ by again using get(1)
-			// This will enable group bed files by organ.
-			// tuple is now (bed, chr, dir, organ). After this you group by chr, dir and organ (collect all beds for same chr, same dir, same organ)
-			polyA_unique_cs_beds_chr_dir_organs_improved = polyA_unique_cs_beds_chr_dir_organs.map{it->[it.get(0), it.get(1), it.get(2), it.get(3).tokenize('-').get(1)]}
+		// get() gets each element of the tuple/list. 0-based index
+		// tokenize('-') means split string by '-' so that you can get organ out of scinpas-organ by again using get(1)
+		// This will enable group bed files by organ.
+		// tuple is now (bed, chr, dir, organ). After this you group by chr, dir and organ (collect all beds for same chr, same dir, same organ)
+		polyA_unique_cs_beds_chr_dir_organs_improved = polyA_unique_cs_beds_chr_dir_organs.map{it->[it.get(0), it.get(1), it.get(2), it.get(3).tokenize('-').get(1)]}
 
-			// left join with original sample unique cs (which has sample and organ info) and modified unique cs (which has cluster info)
-			// you consider all_polyA_modified_unique_cs_beds by one pair of chr and direction at a time but send all them once for simplicity
-			organ_specific_cs_filtered = LEFT_JOIN_CATALOG(polyA_unique_cs_beds_chr_dir_organs_improved.groupTuple(by:[1,2,3]), all_polyA_modified_unique_cs_beds.collect(), params.pas_split_by_organ_script)
+		// left join with original sample unique cs (which has sample and organ info) and modified unique cs (which has cluster info)
+		// you consider all_polyA_modified_unique_cs_beds by one pair of chr and direction at a time but send all them once for simplicity
+		organ_specific_cs_filtered = LEFT_JOIN_CATALOG(polyA_unique_cs_beds_chr_dir_organs_improved.groupTuple(by:[1,2,3]), all_polyA_modified_unique_cs_beds.collect(), params.pas_split_by_organ_script)
 
-			/////////////////////////////////////////////////////////////////////////
-			/////////////////////////// Organ specific score ///////////////////////
+		/////////////////////////////////////////////////////////////////////////
+		/////////////////////////// Organ specific score ///////////////////////
 
-			organ_specific_scores = GET_ORGAN_SCORE(organ_specific_cs_filtered.groupTuple(by:1), params.organ_score, params.organ_score_script)
-			pas_w_gene_and_organ_score = MERGE_ORGAN_SCORE_TO_PAS(organ_specific_scores.collect(), pas_w_geneid, params.gene_id_pas_out, params.merge_pas_organ_score_script)
-		}
+		organ_specific_scores = GET_ORGAN_SCORE(organ_specific_cs_filtered.groupTuple(by:1), params.organ_score, params.organ_score_script)
+		pas_w_gene_and_organ_score = MERGE_ORGAN_SCORE_TO_PAS(organ_specific_scores.collect(), pas_w_geneid, params.gene_id_pas_out, params.merge_pas_organ_score_script)
 		
 		/////////////////////////////////////////////////////////////////
 		/////////////////////////// Motif Search ///////////////////////
-		if(params.sample_type == "mouse" || params.sample_type == "human"){
-			pas_w_gene_w_organ_score_w_motif = RCS_MOTIF_CHECK(pas_w_gene_and_organ_score, params.gene_id_pas_out, params.rcs_motif_check_out, params.genome_fasta, params.rcs_motif_check_script)
-		}
+		
+		pas_w_gene_w_organ_score_w_motif = RCS_MOTIF_CHECK(pas_w_gene_and_organ_score, params.gene_id_pas_out, params.rcs_motif_check_out, params.genome_fasta, params.rcs_motif_check_script)
 
 		// worm does not have organs
-		else if(params.sample_type == "worm"){
-			pas_w_gene_w_motif = RCS_MOTIF_CHECK(pas_w_geneid, params.gene_id_pas_out, params.rcs_motif_check_out_for_no_organs, params.genome_fasta, params.rcs_motif_check_script)
-		}
 
 		///////////////////////////////////////////////////////////////////////////////////////
 		/////////////////////////// Convert necessary output to bed.gz ///////////////////////	
@@ -234,13 +228,8 @@ workflow polyA_all_samples{
 		
 		gzip_pas_w_geneid = CONVERT_GZIP_CATALOG_GENEID(pas_w_geneid)
 
-		if(params.sample_type == "mouse" || params.sample_type == "human"){
-			gzip_pas_w_gene_w_organ_score_w_motif = CONVERT_GZIP_CATALOG_GENEID_ORGAN_MOTIF(pas_w_gene_w_organ_score_w_motif)
-		}
-
-		else if(params.sample_type == "worm"){
-			gzip_pas_w_gene_w_motif = CONVERT_GZIP_CATALOG_GENEID_ORGAN_MOTIF(pas_w_gene_w_motif)	
-		}
+		gzip_pas_w_gene_w_organ_score_w_motif = CONVERT_GZIP_CATALOG_GENEID_ORGAN_MOTIF(pas_w_gene_w_organ_score_w_motif)
+		
 	}
 
 

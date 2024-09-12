@@ -7,63 +7,56 @@ directly from single cell RNA sequencing data.
 
 ## Workflow
   ### general workflow
-  ![](overall_workflow.png)
-  
-  ### read classification into 5 categories
-  ![](classification.png)
-
-  ### analyses
-  There are different layers of analyses. and hence you need to use the relevant parameters for running the pipeline.
-  Please refer to this figure: 
-  ![](analysis.png)
-
-	
+  ![](scinpas_catalog_workflow.png)
+  	
 ## Requirements
-0) default directory is set as follows
-![](directory.png)
+1) default directory of SCINPAS is set as follows
+![](scinpas_file_organization.png)
 
-1) installation of nextflow and dependencies.
+2) default directory of SCINPAS_FILTERING is set as follows
+![](scinpas_filtering_file_organization.png)
+
+3) installation of nextflow and dependencies.
 
 ```bash
 mamba create -n nf-env nextflow
 ```
 
-2) Data must be single cell 3'end RNA sequencing data.
+4) Data must be single cell 3'end RNA sequencing data.
 At the moment, the pipeline supports 10X genomics 3'end sequencing data.
 
-3) Make sure all scripts (python, nextflow) are located in the "src" folder.
+5) currently supported species are human, mouse and worm
 
-4) Make sure all mouse data (sample, negative controls, gtf and fasta) are located in "data/mouse" folder
+6) Make sure all scripts (python, nextflow) are located in the "src" folder.
 
-5) Make sure all human data (sample, negative controls, gtf and fasta) are located in "data/human" folder
+7) Make sure motif_info_2.csv is located in "src" folder
 
-6) Make sure `canonical_motives.csv` are located in the "data" folder. (common to both human and mouse)
+8) For new version of SCINPAS: Make sure all data (bam/bai, sample_organ_total_alter.csv, gtf and fasta) are located in "data" folder
 
-7) Input file format must be: 10X_A_B.bam.(and 10X_A.B.bam.bai), where A and B are sample name parts.
+9) sample_organ_total_alter.csv contains 3 columns "dir" "sample" and "organ" where "dir" contains the full directory towards sample
+and "sample" being SCINPAS sample name. 
 
-8) gtf file is named as: `genes.gtf`
+10) "sample" column in sample_organ_total_alter.csv must be: 10X_A_B.bam.(and 10X_A.B.bam.bai), where A and B are sample name parts.
 
-9) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
+11) For filtering of SCINPAS: Make sure (file_names_modified.csv, catalog_input.csv, modified_cs_list_all_combinations.csv, gtf and fasta)
+are in "data" folder.
 
-10) raw negative control must be structured as: *10X_A_BUmiRaw.bam (and *10X_A_BUmiRaw.bam.bai)
-There should be at least 1 letter before 10X to differentiate between input file, by default "A" is used.
+12) file_names_modified.csv contains 4 columns: "filename", "chromosome", "direction", "organ" where "filename" contains
+full directory towards individiual sample cleavage sites.bed (e.g. /scicore/home/zavolan/moon0000/CATALOG/result/human/v1.0.2/all_organs_split_bed_clustering/10X_131_1-brain_all_polyA_cs_sampleForOrganGrouping_21_+.bed)
 
-11) deduplicated negative control must be structured as: *10X_A_BUmiDedup.bam (and *10X_A_BUmiDedup.bam.bai)
-There should be at least 1 letter before 10X to differentiate between input file, by default "A" is used.
+13) catalog_input.csv contains 3 columns: "chrom", "direction", "path" where "path" contains
+full directory towards PAS clusters of all samples. (e.g. /scicore/home/zavolan/moon0000/CATALOG/result/human/v1.0.2/all_organs_merged_bed_clustering/Allsamples_polyA_cluster_out_Y_+.bed)
 
-raw negative control refers to the raw bam file of one of sample data. (same data but named differently).
-deduplicated negative control refers to the UMI-tools deduplicated version of one of sample data. 
+14) modified_cs_list_all_combinations.csv contains 1 column: "sample" which contains
+full directory towards cleavage sites of all samples that have PAS cluster id assigned.
+(e.g. /scicore/home/zavolan/moon0000/CATALOG/result/human/v1.0.2/all_organs_merged_bed_clustering/all_samples_modified_unique_cs_22_-.bed)
 
-12) type1 and type2 parameter in nextflow.config file refers to cell type 1 and cell type 2 in the dataset you used.
-Type1 is the default cell type. e.g. spermatocyte.
-Type2 is cell type that you expect changes in average terminal exon length and/or the number of intronic polyA sites. e.g. elongating spermatid.
-This is only relevant if you do "cell_type_analysis". 
+15) Note that for sake of future users, filtering of SCINPAS will be integrated in the main SCINPAS and hence no need to prepare individual csv files in the future.
+(file_names_modified.csv, catalog_input.csv, modified_cs_list_all_combinations.csv)
 
-13) catalog.bed is needed for computing overlap between SCINPAS PAS and existing, known pA catalog.
+16) gtf file is named as: `genes.gtf`
 
-**Note: folder structures/locations, gtf file, catalog, reference genome and result folder can be changed in the nextflow.config file. 
-However, input file format, negative control format variable names in nextflow.config should not be changed because
-downstream processes expect that name.**
+17) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
 
 **Note: if you do not have some input files (e.g. control, celltype annotation, catalog.bed), processes which need those files will not be executed. The rest of the processes will run.**
 
@@ -74,54 +67,36 @@ downstream processes expect that name.**
 
 Once you made a conda environment and activated the environment (conda activate nf-env), traverse into src folder and run the nextflow command as follows:
 
-1. Running mouse samples:
+1. Running SCINPAS to create CATALOG:
 
-	1.1. if you do not want to run analysis:
-	nextflow run main.nf -profile slurm -resume --sample_type "mouse"
+	The workflow has 2 folds. You need to run the workflow twice.
+	1.1. 1st workflow occurrence command (to enable manual filtering of samples by % uniquely mapped reads and sequence quality threshold):
+	
+		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "yes"
+	
+		From this 1st workflow: 
+		- check whether % uniquely mapped reads are high enough and do 1st filtering of samples with low %
+		  This generates output "sample_organ_first_filtered.csv"
+		- check sequence quality is high enough to do 2nd filtering of samples with low sequence quality
+			This generates output "sample_organ_second_filtered.csv"
+	
+	1.2. 2nd workflow occurrence command (to run the whole workflow and generate catalog):
 
-	1.2. if you want to do analysis but not (cell type specific and overlap analysis, gene_coverage): 
-	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" 
+		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "no"
+		
+		This uses "sample_organ_second_filtered.csv" from the 1st workflow (do not change the output name of this) as an input
+		run the following command, if you think manual filtering from the 1st workflow makes sense
 
-	1.3. if you want to do analysis including cell type specific analysis: 
-	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --cell_type_analysis "yes"
+		You can replace human with mouse or worm. For now only supports 3 species. 
 
-	1.4. if you want to do analysis including analysis related to overlap (comparison between SCINPAS-induced PAS and pre-exsting catalog): 
-	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --overlap "yes"
-
-	1.5. if you want to do analysis including analysis related to gene coverage: 
-	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes"  --g_coverage "yes"
-
-	1.6. if you want to do all analysis: 
-	nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
-
-2. Running human samples:
-
-	2.1. if you do not want to run analysis:
-	nextflow run main.nf -profile slurm -resume --sample_type "human"
-
-	2.2. if you want to do analysis but not (cell type specific and overlap analysis, gene_coverage): 
-	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" 
-
-	2.3. if you want to do analysis including cell type specific analysis: 
-	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --cell_type_analysis "yes"
-
-	2.4. if you want to do analysis including analysis related to overlap (comparison between SCINPAS-induced PAS and pre-exsting catalog): 
-	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --overlap "yes"
-
-	2.5. if you want to do analysis including analysis related to gene coverage: 
-	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes"  --g_coverage "yes"
-
-	2.6. if you want to do all analysis: 
-	nextflow run main.nf -profile slurm -resume --sample_type "human" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
-
-3. background running of the pipeline:
+2. background running of the pipeline:
 	
 	By default, nextflow displays progression report to the screen. If you do not want that,
 	you can run "nohup" parameter so that progresison report is saved in the log file. Example command line is: 
 
 	nohup nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
 
-4. Note:
+3. Note:
 	
 	Running SCINPAS pipeline on the login node is not recommended despite it assign jobs to computing node.
 	This is because nexflow displays progression report on the screen which can consume i/o extensively on the login node.

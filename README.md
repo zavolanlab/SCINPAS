@@ -87,26 +87,26 @@ Once you made a conda environment and activated the environment (conda activate 
 	
 		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "yes"
 	
-		From this 1st workflow: 
-		- check whether % uniquely mapped reads are high enough and do 1st filtering of samples with low %
-		  This generates output "sample_organ_first_filtered.csv"
-		- check sequence quality is high enough to do 2nd filtering of samples with low sequence quality
-			This generates output "sample_organ_second_filtered.csv"
+	From this 1st workflow: 
+	- check whether % uniquely mapped reads are high enough and do 1st filtering of samples with low %
+		This generates output "sample_organ_first_filtered.csv"
+	- check sequence quality is high enough to do 2nd filtering of samples with low sequence quality
+		This generates output "sample_organ_second_filtered.csv"
 	
 	1.2. 2nd workflow occurrence command (to run the whole workflow and generate catalog):
 
 		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "no"
 		
-		This uses "sample_organ_second_filtered.csv" from the 1st workflow (do not change the output name of this) as an input
-		run the following command, if you think manual filtering from the 1st workflow makes sense
+	This uses "sample_organ_second_filtered.csv" from the 1st workflow (do not change the output name of this) as an input
+	run the following command, if you think manual filtering from the 1st workflow makes sense
 
-		You can replace human with mouse or worm. For now only supports 3 species. 
+	You can replace human with mouse or worm. For now only supports 3 species. 
 
 2. Running SCINPAS_FILTERING (Separating PAS from noise)
 
 		nohup nextflow run main.nf -profile slurm -resume --sample_type "human"
 
-		You can replace human with mouse or worm. For now only supports 3 species. 
+	You can replace human with mouse or worm. For now only supports 3 species. 
 
 3. background running of the pipeline:
 	

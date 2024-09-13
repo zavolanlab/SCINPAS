@@ -104,9 +104,9 @@ Once you made a conda environment and activated the environment (conda activate 
 
 2. Running SCINPAS_FILTERING (Separating PAS from noise)
 
-	nohup nextflow run main.nf -profile slurm -resume --sample_type "human"
+		nohup nextflow run main.nf -profile slurm -resume --sample_type "human"
 
-	You can replace human with mouse or worm. For now only supports 3 species. 
+		You can replace human with mouse or worm. For now only supports 3 species. 
 
 3. background running of the pipeline:
 	

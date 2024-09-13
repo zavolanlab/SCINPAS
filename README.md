@@ -11,62 +11,64 @@ directly from single cell RNA sequencing data.
   	
 ## Requirements
 
-1) installation of nextflow and dependencies.
+1) The pipeline was tested on an HPC environment managed by Slurm
+
+2) installation of nextflow and dependencies.
 
 ```bash
 mamba create -n nf-env nextflow
 ```
 
-2) Data must be single cell 3'end RNA sequencing data.
+3) Data must be single cell 3'end RNA sequencing data.
 At the moment, the pipeline supports 10X genomics 3'end sequencing data.
 
-3) Currently supported species are human, mouse and worm
+4) Currently supported species are human, mouse and worm
 
-4) Default directory of SCINPAS is set as follows
+5) Default directory of SCINPAS is set as follows
 ![](scinpas_file_organization.png)
 
 	Set-up guideline for SCINPAS_CATALOG:
-
-	4-1) Make sure all scripts (python, nextflow) are located in the "src" folder.
-
-	4-2) Make sure motif_info_2.csv is located in "src" folder
-
-	4-3) Make sure all data (bam/bai, sample_organ_total_alter.csv, gtf and fasta) are located in "data" folder
-
-	4-4) sample_organ_total_alter.csv contains 3 columns "dir" "sample" and "organ" where "dir" contains the full directory towards sample
-	and (e.g. /scicore/home/zavolan/moon0000/CATALOG_CLEAN/data/human/bloodImmune) and "sample" being SCINPAS sample name (e.g. 10X_190_1). 
-
-	4-5) "sample" column in sample_organ_total_alter.csv must be: 10X_A_B.bam.(and 10X_A.B.bam.bai), where A and B are sample name parts.
-
-	4-6) gtf file is named as: `genes.gtf`
-
-	4-7) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
-
-5) Default directory of SCINPAS_FILTERING is set as follows
-![](scinpas_filtering_file_organization.png)
-
-	Set-up guideline for SCINPAS_FILTERING:
 
 	5-1) Make sure all scripts (python, nextflow) are located in the "src" folder.
 
 	5-2) Make sure motif_info_2.csv is located in "src" folder
 
-	5-3) Make sure (file_names_modified.csv, catalog_input.csv, modified_cs_list_all_combinations.csv, gtf and fasta)
+	5-3) Make sure all data (bam/bai, sample_organ_total_alter.csv, gtf and fasta) are located in "data" folder
+
+	5-4) sample_organ_total_alter.csv contains 3 columns "dir" "sample" and "organ" where "dir" contains the full directory towards sample
+	and (e.g. /scicore/home/zavolan/moon0000/CATALOG_CLEAN/data/human/bloodImmune) and "sample" being SCINPAS sample name (e.g. 10X_190_1). 
+
+	5-5) "sample" column in sample_organ_total_alter.csv must be: 10X_A_B.bam.(and 10X_A.B.bam.bai), where A and B are sample name parts.
+
+	5-6) gtf file is named as: `genes.gtf`
+
+	5-7) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
+
+6) Default directory of SCINPAS_FILTERING is set as follows
+![](scinpas_filtering_file_organization.png)
+
+	Set-up guideline for SCINPAS_FILTERING:
+
+	6-1) Make sure all scripts (python, nextflow) are located in the "src" folder.
+
+	6-2) Make sure motif_info_2.csv is located in "src" folder
+
+	6-3) Make sure (file_names_modified.csv, catalog_input.csv, modified_cs_list_all_combinations.csv, gtf and fasta)
 	are in "data" folder.
 
-	5-4) file_names_modified.csv contains 4 columns: "filename", "chromosome", "direction", "organ" where "filename" contains
+	6-4) file_names_modified.csv contains 4 columns: "filename", "chromosome", "direction", "organ" where "filename" contains
 	full directory towards individiual sample cleavage sites.bed (e.g. /scicore/home/zavolan/moon0000/CATALOG/result/human/v1.0.2/all_organs_split_bed_clustering/10X_131_1-brain_all_polyA_cs_sampleForOrganGrouping_21_+.bed)
 
-	5-5) catalog_input.csv contains 3 columns: "chrom", "direction", "path" where "path" contains
+	6-5) catalog_input.csv contains 3 columns: "chrom", "direction", "path" where "path" contains
 	full directory towards PAS clusters of all samples. (e.g. /scicore/home/zavolan/moon0000/CATALOG/result/human/v1.0.2/all_organs_merged_bed_clustering/Allsamples_polyA_cluster_out_Y_+.bed)
 
-	5-6) modified_cs_list_all_combinations.csv contains 1 column: "sample" which contains
+	6-6) modified_cs_list_all_combinations.csv contains 1 column: "sample" which contains
 	full directory towards cleavage sites of all samples that have PAS cluster id assigned.
 	(e.g. /scicore/home/zavolan/moon0000/CATALOG/result/human/v1.0.2/all_organs_merged_bed_clustering/all_samples_modified_unique_cs_22_-.bed)
 
-	5-7) gtf file is named as: `genes.gtf`
+	6-7) gtf file is named as: `genes.gtf`
 
-	5-8) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
+	6-8) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
 
 **Note: For future users, SCINPAS_FILTERING will be integrated into the main SCINPAS_CATALOG and hence no need to prepare individual csv files in the future (file_names_modified.csv, catalog_input.csv, modified_cs_list_all_combinations.csv).**
 
@@ -100,20 +102,20 @@ Once you made a conda environment and activated the environment (conda activate 
 
 		You can replace human with mouse or worm. For now only supports 3 species. 
 
-2. RUNNING SCINPAS_FILTERING (Separating PAS from noise)
+2. Running SCINPAS_FILTERING (Separating PAS from noise)
 
 	nohup nextflow run main.nf -profile slurm -resume --sample_type "human"
 
 	You can replace human with mouse or worm. For now only supports 3 species. 
 
-2. background running of the pipeline:
+3. background running of the pipeline:
 	
 	By default, nextflow displays progression report to the screen. If you do not want that,
 	you can run "nohup" parameter so that progresison report is saved in the log file. Example command line is: 
 
 	nohup nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
 
-3. Note:
+4. Final note:
 	
 	Running SCINPAS pipeline on the login node is not recommended despite it assign jobs to computing node.
 	This is because nexflow displays progression report on the screen which can consume i/o extensively on the login node.

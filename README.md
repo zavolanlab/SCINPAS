@@ -77,7 +77,7 @@ At the moment, the pipeline supports 10X genomics 3'end sequencing data.
 > Note: execution shown for slurm cluster. 
 > Create and select other profile as fit.
 
-Once you made a conda environment and activated the environment (conda activate nf-env), traverse into src folder and run the nextflow command as follows:
+Once you made a conda environment and activated the environment (conda activate nf-env), traverse into corresponding src folder and run the nextflow command as follows:
 
 1. Running SCINPAS to create CATALOG (SCINPAS_CATALOG):
 
@@ -85,7 +85,7 @@ Once you made a conda environment and activated the environment (conda activate 
 
 	1.1. 1st workflow occurrence command (to enable manual filtering of samples by % uniquely mapped reads and sequence quality threshold):
 	
-		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "yes"
+		nextflow run main.nf -profile slurm -resume --sample_type "human" --check "yes"
 	
 	From this 1st workflow: 
 	- check whether % uniquely mapped reads are high enough and do 1st filtering of samples with low %
@@ -95,7 +95,7 @@ Once you made a conda environment and activated the environment (conda activate 
 	
 	1.2. 2nd workflow occurrence command (to run the whole workflow and generate catalog):
 
-		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "no"
+		nextflow run main.nf -profile slurm -resume --sample_type "human" --check "no"
 		
 	This uses "sample_organ_second_filtered.csv" from the 1st workflow (do not change the output name of this) as an input
 	run the following command, if you think manual filtering from the 1st workflow makes sense
@@ -104,7 +104,7 @@ Once you made a conda environment and activated the environment (conda activate 
 
 2. Running SCINPAS_FILTERING (Separating PAS from noise)
 
-		nohup nextflow run main.nf -profile slurm -resume --sample_type "human"
+		nextflow run main.nf -profile slurm -resume --sample_type "human"
 
 	You can replace human with mouse or worm. For now only supports 3 species. 
 

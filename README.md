@@ -113,7 +113,7 @@ Once you made a conda environment and activated the environment (conda activate 
 	By default, nextflow displays progression report to the screen. If you do not want that,
 	you can run "nohup" parameter so that progresison report is saved in the log file. Example command line is: 
 
-		nohup nextflow run main.nf -profile slurm -resume --sample_type "mouse" --analysis "yes" --cell_type_analysis "yes" --overlap "yes" --g_coverage "yes"
+		nohup nextflow run main.nf -profile slurm -resume --sample_type "mouse"
 
 4. Final note:
 	

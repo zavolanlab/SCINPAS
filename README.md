@@ -68,9 +68,6 @@ At the moment, the pipeline supports 10X genomics 3'end sequencing data.
 
 	5-8) reference genome is named as: `genome.fa` (and `genome.fa.fai`)
 
-For future users, filtering of SCINPAS will be integrated in the main SCINPAS and hence no need to prepare individual csv files in the future.
-(file_names_modified.csv, catalog_input.csv, modified_cs_list_all_combinations.csv).
-
 **Note: For future users, SCINPAS_FILTERING will be integrated into the main SCINPAS_CATALOG and hence no need to prepare individual csv files in the future (file_names_modified.csv, catalog_input.csv, modified_cs_list_all_combinations.csv).**
 
 ## Command line
@@ -83,7 +80,7 @@ Once you made a conda environment and activated the environment (conda activate 
 1. Running SCINPAS to create CATALOG (SCINPAS_CATALOG):
 
 	The workflow has 2 folds. You need to run the workflow twice.
-	
+
 	1.1. 1st workflow occurrence command (to enable manual filtering of samples by % uniquely mapped reads and sequence quality threshold):
 	
 		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "yes"
@@ -102,6 +99,12 @@ Once you made a conda environment and activated the environment (conda activate 
 		run the following command, if you think manual filtering from the 1st workflow makes sense
 
 		You can replace human with mouse or worm. For now only supports 3 species. 
+
+2. RUNNING SCINPAS_FILTERING (Separating PAS from noise)
+
+	nohup nextflow run main.nf -profile slurm -resume --sample_type "human"
+
+	You can replace human with mouse or worm. For now only supports 3 species. 
 
 2. background running of the pipeline:
 	

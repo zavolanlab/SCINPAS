@@ -26,6 +26,7 @@ At the moment, the pipeline supports 10X genomics 3'end sequencing data.
 ![](scinpas_file_organization.png)
 
 	Set-up guideline for SCINPAS_CATALOG:
+
 	4-1) Make sure all scripts (python, nextflow) are located in the "src" folder.
 
 	4-2) Make sure motif_info_2.csv is located in "src" folder
@@ -82,6 +83,7 @@ Once you made a conda environment and activated the environment (conda activate 
 1. Running SCINPAS to create CATALOG (SCINPAS_CATALOG):
 
 	The workflow has 2 folds. You need to run the workflow twice.
+	
 	1.1. 1st workflow occurrence command (to enable manual filtering of samples by % uniquely mapped reads and sequence quality threshold):
 	
 		nohup nextflow run main.nf -profile slurm -resume --sample_type "human" --check "yes"

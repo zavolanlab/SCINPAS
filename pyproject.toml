@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scinpas_catalog"
+version = "0.1.0"
+dependencies = [
+    "pysam",
+    "pandas",
+    "numpy"
+]
+
+[tool.setuptools]
+# Map the Python package directly to your existing directory
+package-dir = {"scinpas_catalog" = "SCINPAS_CATALOG/src"}
+
+[project.scripts]
+scinpas_fix_softclipped = "scinpas_catalog.fix_softclipped_final_nextflow:run_process"
+scinpas_get_polyA = "scinpas_catalog.get_polyA_reads_final_advanced2_nextflow:run_process"
+scinpas_get_unique_cs = "scinpas_catalog.get_polyA_unique_cs_nextflow:run_process"

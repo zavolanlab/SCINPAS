@@ -4,16 +4,10 @@
 Created on Sun Jan 23 07:02:13 2022
 
 @author: Youngbin Moon (y.moon@unibas.ch)
+
+modified on Apr 20 2026
+@author: Aleksei Mironov (aleksei.mironov@unibas.ch)
 """
-
-
-
-
-
-
-
-
-
 
 import pysam
 import argparse
@@ -335,91 +329,59 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
     return polyA_reads, non_polyA_reads, low_quality_pA_reads
 
 def get_all_polyA_input():
+    parser = argparse.ArgumentParser(description="get filtered polyA reads")
+    parser.add_argument('--bam_input', dest='bam_input', required=True)
+    parser.add_argument('--o_polyA', dest='o_polyA', required=True)
+    parser.add_argument('--o_nonpolyA', dest='o_nonpolyA', required=True)      
+    parser.add_argument('--fasta', dest='fasta', required=True)    
+    parser.add_argument('--percentage_threshold', type=int, dest='percentage_threshold', required=True)
+    parser.add_argument('--length_threshold', type=int, dest='length_threshold', required=True)  
+    parser.add_argument('--use_fc', type=int, dest='use_fc', required=True)   
     
-    parser = argparse.ArgumentParser(description="get filtered polyA reads, nonpolyA reads and full polyA reads")
-    parser.add_argument('--bam_input', dest = 'bam_input',
-                        required = True,
-                        help = 'partial deduplicated bam file in which the alignment is fixed')
-    
-    parser.add_argument('--o_polyA', dest = 'o_polyA',
-                        required = True,
-                        help = 'full poly A reads')
-
-    parser.add_argument('--o_nonpolyA', dest = 'o_nonpolyA',
-                        required = True,
-                        help = 'full nonpoly A reads')      
-    
-    parser.add_argument('--fasta', dest = 'fasta',
-                        required = True,
-                        help = 'fasta file directory')    
-    
-    parser.add_argument('--percentage_threshold', type = int, dest = 'percentage_threshold',
-                        required = True,
-                        help = 'minimal percentage to become polyA')
-
-    parser.add_argument('--length_threshold', type = int, dest = 'length_threshold',
-                        required = True,
-                        help = 'minimum number of A to become polyA')  
-   
-    parser.add_argument('--use_fc', type = int, dest = 'use_fc',
-                        required = True,
-                        help = 'whether use fixed cleavage site or not')   
-      
+    # NEW ARGUMENTS
+    parser.add_argument('--o_low_q_polyA', dest='o_low_q_polyA', required=False)
+    parser.add_argument('--exact_out', action='store_true')
     args = parser.parse_args()
     
     bamFile = args.bam_input
     sam = pysam.AlignmentFile(bamFile, "rb")
+    fasta_file = pysam.FastaFile(args.fasta)
     
-    out_mode = "wb"
-    
-    fasta_dir = args.fasta
-    fasta_file = pysam.FastaFile(fasta_dir)
-    
-    out_polyA = args.o_polyA
-    out_non_polyA = args.o_nonpolyA
-    
-    percentage_threshold = args.percentage_threshold
-    length_threshold = args.length_threshold
-    
-    use_fc = bool(int(args.use_fc))
-    number = re.split('_chr', bamFile)[1].split('_')[0]
+    if args.exact_out:
+        number = ""
+    else:
+        number = re.split('_chr', bamFile)[1].split('_')[0]
         
-    return sam, out_mode, fasta_file, out_polyA, out_non_polyA,\
-            percentage_threshold, length_threshold, use_fc, number
+    return sam, "wb", fasta_file, args.o_polyA, args.o_nonpolyA, args.o_low_q_polyA, \
+            args.percentage_threshold, args.length_threshold, bool(args.use_fc), number, args.exact_out
 
 def run_process():
     start = time.time()
-    # starting the monitoring
     tracemalloc.start()
     
-    sam, out_mode, fasta_file, out_polyA, out_non_polyA,\
-    percentage_threshold, length_threshold, use_fc, number = get_all_polyA_input()
+    sam, out_mode, fasta_file, out_polyA, out_non_polyA, o_low_q_polyA, \
+    percentage_threshold, length_threshold, use_fc, number, exact_out = get_all_polyA_input()
     print('successfully got inputs')
     
     polyA_reads, non_polyA_reads, low_quality_pA_reads = \
     find_polyA_seq(sam, percentage_threshold, length_threshold, fasta_file, use_fc)
     print('successfully got all polyA reads')
     
-    corrected_out_polyA = out_polyA.split('.')[0] + '_chr' + str(number) + '.bam'
-    corrected_out_non_polyA = out_non_polyA.split('.')[0] + '_chr' + str(number) + '.bam'
-    corrected_out_low_q_polyA = out_polyA.split('.')[0] + '_lowQualityChrom' + str(number) + '.bam'
+    if exact_out:
+        corrected_out_polyA = out_polyA
+        corrected_out_non_polyA = out_non_polyA
+        corrected_out_low_q_polyA = o_low_q_polyA if o_low_q_polyA else "low_q.bam"
+    else:
+        corrected_out_polyA = out_polyA.split('.')[0] + '_chr' + str(number) + '.bam'
+        corrected_out_non_polyA = out_non_polyA.split('.')[0] + '_chr' + str(number) + '.bam'
+        corrected_out_low_q_polyA = out_polyA.split('.')[0] + '_lowQualityChrom' + str(number) + '.bam'
     
     write_output(polyA_reads, corrected_out_polyA, out_mode, sam)
-    print('successfully got all polyA reads bamfile')
-    
     write_output(non_polyA_reads, corrected_out_non_polyA, out_mode, sam)
-    print('successfully got all nonpolyA reads bamfile')
-    
     write_output(low_quality_pA_reads, corrected_out_low_q_polyA, out_mode, sam)
-    print('successfully got all low quality polyA reads bamfile')
         
-    end = time.time()
-    print('elapsed time: ' + str(end - start))
-    
-    # displaying the memory
+    print('elapsed time: ' + str(time.time() - start))
     print('memory usage is: ' + str(tracemalloc.get_traced_memory()))
-    
-    # stopping the library
     tracemalloc.stop()
     
 if __name__ == "__main__":    

@@ -4,6 +4,9 @@
 Created on Sun Oct 22 22:55:32 2023
 
 @author: Youngbin Moon (y.moon@unibas.ch)
+
+modified on Apr 20 2026
+@author: Aleksei Mironov (aleksei.mironov@unibas.ch)
 """
 
 import pysam
@@ -11,9 +14,6 @@ import argparse
 from collections import Counter
 import pandas as pd
 import numpy as np
-
-
-
 
 """
 Aim : write a bed file of unique cleavage sites.
@@ -162,76 +162,41 @@ def get_num_unique_cleavage(sam, use_FC):
         
 def get_args():        
     parser = argparse.ArgumentParser(description="get number of polyA sites")
-
-    parser.add_argument('--bam', dest = 'bam',
-                        required = True,
-                        help = 'bam file containing polyA reads')
-       
-    parser.add_argument('--bed_out', dest = 'bed_out',
-                        required = True,
-                        help = 'output number of polyA sites csv file name')
-
-    parser.add_argument('--use_fc', dest = 'use_fc',
-                        required = True,
-                        help = 'use fixed cleavage site or not')
-
-    parser.add_argument('--split', dest = 'split',
-                        required = True,
-                        help = 'whether use chr-splitted bam or full bam')
-
-    parser.add_argument('--multiple_samples', dest = 'multiple_samples',
-                        default = 0,
-                        help = 'whether use all samples mode or not (i.e. use RPM and # of experiments that support a particular cs')
-
-    parser.add_argument('--count_dir', dest = 'count_dir', default = 0,
-                        help = 'directory towards csv file containing the number of pA reads in 1 sample')
+    parser.add_argument('--bam', dest='bam', required=True)
+    parser.add_argument('--bed_out', dest='bed_out', required=True)
+    parser.add_argument('--use_fc', type=int, dest='use_fc', required=True)
+    parser.add_argument('--split', dest='split', required=False, default="")
+    parser.add_argument('--multiple_samples', dest='multiple_samples', type=int, default=0)
+    parser.add_argument('--count_dir', dest='count_dir', default=0)
     
+    # NEW ARGUMENTS FOR NANOFLOWZ
+    parser.add_argument('--exact_out', action='store_true')
+    parser.add_argument('--sample_name', dest='sample_name', required=False)
     args = parser.parse_args()
     
-    bam_dir = args.bam
-    
-    bed_out = args.bed_out
-    use_fc = args.use_fc
-    
-    split = args.split
-    
-    multiple_samples = args.multiple_samples
-    count_dir = args.count_dir
-    
-    if multiple_samples:
-        count_df = pd.read_csv(count_dir, delimiter = ',', low_memory=False, names = ['sample', 'type', 'count'])
+    if args.multiple_samples:
+        count_df = pd.read_csv(args.count_dir, delimiter=',', low_memory=False, names=['sample', 'type', 'count'])
         pA_count = count_df.loc[0, 'count']
-        print('pA_count: ' + str(pA_count))
-        print('multiple samples true')
-        
     else:
         pA_count = 0
-        print('multiple samples false')
         
-    return bam_dir, bed_out, use_fc, split, multiple_samples, pA_count
+    return args.bam, args.bed_out, bool(args.use_fc), args.split, args.multiple_samples, pA_count, args.exact_out, args.sample_name
 
 def run_process():
-
-    bam_dir, bed_out, use_fc, split, multiple_samples, pA_count = get_args()
-    print('successfully got arguments')
-    
+    bam_dir, bed_out, use_fc, split, multiple_samples, pA_count, exact_out, sample_name_arg = get_args()
     bam = pysam.AlignmentFile(bam_dir, "rb")
     
     unique_cleavage_site = get_num_unique_cleavage(bam, use_fc)
-    print('successfully got unique cleavage sites dictionary')
     
-    sample_name = '_'.join(bed_out.split('.')[0].split('_')[0:3])
-    
-    final_df = convert_dict_to_df(unique_cleavage_site, multiple_samples, pA_count, sample_name)
-    print('successfully converted the dictionary into dataframe format')
-    
-    chrom_number = split
-    out_template = bed_out.split('.')[0]
-    bed_out = out_template + '_' + chrom_number + '.bed'
+    if exact_out:
+        sample_name = sample_name_arg if sample_name_arg else "sample"
+        final_bed_out = bed_out
+    else:
+        sample_name = '_'.join(bed_out.split('.')[0].split('_')[0:3])
+        final_bed_out = bed_out.split('.')[0] + '_' + split + '.bed'
         
-    write_to_bed(final_df, bed_out, multiple_samples, sample_name)
-    print('successfully saved the result')
-    print('successfully done')
+    final_df = convert_dict_to_df(unique_cleavage_site, multiple_samples, pA_count, sample_name)
+    write_to_bed(final_df, final_bed_out, multiple_samples, sample_name)
     
 if __name__ == "__main__":
     run_process()

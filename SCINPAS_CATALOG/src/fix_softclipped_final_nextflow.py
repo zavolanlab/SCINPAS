@@ -2,8 +2,10 @@
 """
 
 Created on Wed Jul 20 17:26:26 2022
-
 @author: Youngbin Moon (y.moon@unibas.ch)
+
+modified on Apr 20 2026
+@author: Aleksei Mironov (aleksei.mironov@unibas.ch)
 """
 
 import pysam
@@ -339,7 +341,7 @@ def fix_soft_clipped(sam, fasta_file):
     -------        
     changed_reads : list
         a list of deduplicated reads in which their alignments are fixed.
-        (cleavage sites are fixed and saved in the 'FC' tag)
+        (cleavage sites are fixed and saved in the 'XF' tag)
     
     num_fixed : int
         number of softclipped reads that are corrected
@@ -414,7 +416,7 @@ def fix_soft_clipped(sam, fasta_file):
         # You need to be aware that final_fixed_cleavage_site is 1bp off in the IGV.
         # e.g. cs = 25 means 26 in IGV.
         
-        # save the original and fixed cleavage site into OC and FC tag respectively.     
+        # save the original and fixed cleavage site into XO and XF tag respectively.     
         read.set_tag("XO", cleavage_site)
         read.set_tag("XF", fixed_cleavage_site)   
 
@@ -423,58 +425,48 @@ def fix_soft_clipped(sam, fasta_file):
     return changed_reads, num_fixed, num_unfixed
             
 def get_inputs():
-    parser = argparse.ArgumentParser(description = "fix softclipped regions to get better cleavage sites" )
+    parser = argparse.ArgumentParser(description="fix softclipped regions to get better cleavage sites")
+    parser.add_argument('--bam_file', dest='bam_file', required=True, help='bam_file')    
+    parser.add_argument('--fasta', dest='fasta', required=True, help='fasta file')  
+    parser.add_argument('--bam_out', dest='bam_out', required=True, help='output bam file')
     
-    parser.add_argument('--bam_file', dest = 'bam_file',
-                        required = True,
-                        help = 'bam_file that can be dedup, internal priming, annotated polyA reads')    
-        
-    parser.add_argument('--fasta', dest = 'fasta',
-                        required = True,
-                        help = 'fasta file')  
-             
-    parser.add_argument('--bam_out', dest = 'bam_out',
-                        required = True,
-                        help = 'output bam file')
-     
+    # NEW ARGUMENTS
+    parser.add_argument('--csv_out', dest='csv_out', required=False, help='output csv file')
+    parser.add_argument('--exact_out', action='store_true', help='Use exact filenames without appending chr')
     args = parser.parse_args()
 
     bamFile = args.bam_file  
     bam = pysam.AlignmentFile(bamFile, "rb")     
-       
-    fasta_dir = args.fasta
-    fasta = pysam.FastaFile(fasta_dir)
-            
-    bam_out = args.bam_out
-    number = re.split('_chr', bamFile)[1].split('_')[0]
-    return bam, fasta, bam_out, number
+    fasta = pysam.FastaFile(args.fasta)
+    
+    if args.exact_out:
+        number = ""
+    else:
+        number = re.split('_chr', bamFile)[1].split('_')[0]
+        
+    return bam, fasta, args.bam_out, number, args.csv_out, args.exact_out
         
 def run_process():
-    
-    bam, fasta, bam_out, number = get_inputs()
+    bam, fasta, bam_out, number, csv_out, exact_out = get_inputs()
     print('successfully got inputs')
     
-    corrected_bam_out = bam_out + '_chr' + number + '.bam'
+    if exact_out:
+        corrected_bam_out = bam_out
+        out_file = csv_out if csv_out else "num_fixed_unfixed.csv"
+    else:
+        corrected_bam_out = bam_out + '_chr' + number + '.bam'
+        out_file = "num_fixed_unfixed" + "_" + number + ".csv"
     
     changed_reads, num_fixed, num_unfixed = fix_soft_clipped(bam, fasta)
     print('successfully added new tags')
-    print('successfully got dictionary of new cleavage_sites')
     
     write_output(changed_reads, corrected_bam_out, "wb", bam)
     print('successfully wrote a new bam file')
     
     total = num_fixed + num_unfixed
+    percentage = (num_fixed*100)/total if total > 0 else 0
     
-    if total == 0:
-        percentage = 0
-        
-    else:    
-        percentage = (num_fixed*100)/total
-    
-    row = [total, num_fixed, num_unfixed, percentage]
-    out_file = "num_fixed_unfixed" + "_" + number + ".csv"
-    
-    write_csv(row, out_file)
+    write_csv([total, num_fixed, num_unfixed, percentage], out_file)
     print('successfully saved the number of corrected/uncorrected soft clipped reads')
     
 if __name__ == "__main__":

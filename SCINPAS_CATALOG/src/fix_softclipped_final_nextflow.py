@@ -327,7 +327,7 @@ def extract_sequences(Read, fasta):
         
     return genome_sequence, read_softclipped, threshold
 
-def fix_soft_clipped(sam, fasta_file):
+def fix_soft_clipped(sam, fasta_file, one_based_tags=False):
     """
     Parameters
     ----------    
@@ -336,7 +336,8 @@ def fix_soft_clipped(sam, fasta_file):
     
     fasta_file : a fasta flie
         contains the reference genome sequence.
-        
+    one_based_tags: bool
+        whether to use 1-based coordinates in the 'XO' and 'XF' tags.
     Returns
     -------        
     changed_reads : list
@@ -361,6 +362,9 @@ def fix_soft_clipped(sam, fasta_file):
         left_end = tuples[0]
         right_end = tuples[-1]
         chrom = read.reference_name
+        
+        # "4" in CIGAR means soft clipping. It is the same for both left and right end. See:
+        # https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
         
         # soft clipped read. candidate for being corrected.
         if rev == True and left_end[0] == 4:
@@ -387,7 +391,7 @@ def fix_soft_clipped(sam, fasta_file):
             cleavage_site = int(refStart)
             fixed_cleavage_site = cleavage_site
             
-        # soft clipped read. candidate for being corrected.
+        # soft clipped read. candidate for being corrected. 
         elif rev == False and right_end[0] == 4:
             genome_sequence, read_softclipped, threshold = extract_sequences(read, fasta_file)
             if genome_sequence is None and read_softclipped is None and threshold is None: # Handling out-of-boundary case
@@ -415,10 +419,16 @@ def fix_soft_clipped(sam, fasta_file):
         # Note: BAM and BED are 0-index based. whilst IGV is 1-index based.
         # You need to be aware that final_fixed_cleavage_site is 1bp off in the IGV.
         # e.g. cs = 25 means 26 in IGV.
-        
+        # for easier interpretation, we added the option to save cleavage sites in 1-based system.
+        if one_based_tags:
+            tag_XO = cleavage_site + 1
+            tag_XF = fixed_cleavage_site + 1
+        else:
+            tag_XO = cleavage_site
+            tag_XF = fixed_cleavage_site
         # save the original and fixed cleavage site into XO and XF tag respectively.     
-        read.set_tag("XO", cleavage_site)
-        read.set_tag("XF", fixed_cleavage_site)   
+        read.set_tag("XO", tag_XO)
+        read.set_tag("XF", tag_XF)
 
         changed_reads.append(read)
             
@@ -433,6 +443,7 @@ def get_inputs():
     # NEW ARGUMENTS
     parser.add_argument('--csv_out', dest='csv_out', required=False, help='output csv file')
     parser.add_argument('--exact_out', action='store_true', help='Use exact filenames without appending chr')
+    parser.add_argument('--one_based_tags', action='store_true', help='Store 1-based coordinates in XO and XF tags')
     args = parser.parse_args()
 
     bamFile = args.bam_file  
@@ -444,10 +455,10 @@ def get_inputs():
     else:
         number = re.split('_chr', bamFile)[1].split('_')[0]
         
-    return bam, fasta, args.bam_out, number, args.csv_out, args.exact_out
+    return bam, fasta, args.bam_out, number, args.csv_out, args.exact_out, args.one_based_tags
         
 def run_process():
-    bam, fasta, bam_out, number, csv_out, exact_out = get_inputs()
+    bam, fasta, bam_out, number, csv_out, exact_out, one_based_tags = get_inputs()
     print('successfully got inputs')
     
     if exact_out:
@@ -457,7 +468,7 @@ def run_process():
         corrected_bam_out = bam_out + '_chr' + number + '.bam'
         out_file = "num_fixed_unfixed" + "_" + number + ".csv"
     
-    changed_reads, num_fixed, num_unfixed = fix_soft_clipped(bam, fasta)
+    changed_reads, num_fixed, num_unfixed = fix_soft_clipped(bam, fasta, one_based_tags)
     print('successfully added new tags')
     
     write_output(changed_reads, corrected_bam_out, "wb", bam)

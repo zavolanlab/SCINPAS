@@ -256,7 +256,7 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
     else:
         return False
 
-def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
+def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC, min_phred, tag_phred_mapped, tag_phred_softclipped):
     """
     Parameters
     ----------
@@ -281,8 +281,16 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
     use_FC : bool
         whether you use fixed softclipped region or original soft clipped region.
         True if you want to use fixed softclipped region.
-        False if you do not want to use fixed softclipped region.        
-    
+        False if you do not want to use fixed softclipped region.
+
+    min_phred : int
+        the minimum PHRED quality threshold for a deduplicated read to be considered as high-quality polyA read.
+
+    tag_phred_mapped : string or None
+        if not None, the name of the custom tag to store the median PHRED quality of the mapped part of a read.
+
+    tag_phred_softclipped : string or None
+        if not None, the name of the custom tag to store the median PHRED quality of the softclipped part of a read.
     Returns
     -------        
     polyA_reads : list
@@ -290,16 +298,15 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
     
     non_polyA_reads : list
         a list of reads that do not have polyA tail.
+    
+    low_quality_pA_reads : list
+        a list of reads that have polyA tail but do not meet the minimum PHRED quality threshold.
     """       
     polyA_reads = []
     non_polyA_reads = []
     low_quality_pA_reads = []
     
     for read in sam.fetch():
-        # list of tuples where each element is tuple.
-        # assume soft clipp happens either left end, right end or both ends. it cant be softclipped in the middle.
-        # first element of each tuple = type of cigar block
-        # 2nd element of each tuple = length of each cigar block
         tuples = read.cigartuples
         left_end = tuples[0]
         right_end = tuples[-1]
@@ -308,21 +315,21 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC):
             is_polyA = check_polyA(read, left_end, right_end, percentage_threshold, length_threshold, use_FC)
             if is_polyA:
                 phred_median_mapped, phred_median_softclipped = get_median_phred_polyA(read, use_FC)
-                # filter pA reads with median sequence quality score of mapped and softclipped.
-                if phred_median_mapped > 30 and phred_median_softclipped > 30:    
+                
+                # --- NEW: Inject custom tags for quality tracing if requested ---
+                if tag_phred_mapped:
+                    read.set_tag(tag_phred_mapped, float(phred_median_mapped), value_type='f')
+                if tag_phred_softclipped:
+                    read.set_tag(tag_phred_softclipped, float(phred_median_softclipped), value_type='f')
+
+                # --- NEW: Apply dynamic PHRED threshold ---
+                if phred_median_mapped > min_phred and phred_median_softclipped > min_phred:    
                     polyA_reads.append(read)
-                    
                 else:
                     low_quality_pA_reads.append(read)
                     
-            # 3 possiblities not to have a polyA tail
-            # 1) dont have soft clipped part at all
-            # 2) soft clipped part in the wrong direction
-            # 3) you have soft clipped part in the right direction but do not exceed threshold to become a polyA reads
-            # case 2) and 3)
             elif not is_polyA:
                 non_polyA_reads.append(read)
-        # case 1)                
         elif left_end[0] != 4 and right_end[0] != 4:
             non_polyA_reads.append(read)
             
@@ -338,9 +345,17 @@ def get_all_polyA_input():
     parser.add_argument('--length_threshold', type=int, dest='length_threshold', required=True)  
     parser.add_argument('--use_fc', type=int, dest='use_fc', required=True)   
     
-    # NEW ARGUMENTS
+    # NEW ARGUMENTS FOR DOWNSTREAM ANALYSIS
     parser.add_argument('--o_low_q_polyA', dest='o_low_q_polyA', required=False)
     parser.add_argument('--exact_out', action='store_true')
+    parser.add_argument('--stats_tsv', dest='stats_tsv', required=False, help="Output TSV with polyA statistics")
+    parser.add_argument('--sample_id', dest='sample_id', required=False, help="Sample ID for stats tracking")
+    
+    # NEW ARGUMENTS FOR QUALITY & TAGGING
+    parser.add_argument('--min_phred', type=float, default=30.0, help="Minimum median PHRED score to pass")
+    parser.add_argument('--tag_phred_mapped', type=str, default="", help="Custom SAM tag for mapped PHRED (e.g., ZM)")
+    parser.add_argument('--tag_phred_softclipped', type=str, default="", help="Custom SAM tag for softclipped PHRED (e.g., ZC)")
+    
     args = parser.parse_args()
     
     bamFile = args.bam_input
@@ -353,18 +368,24 @@ def get_all_polyA_input():
         number = re.split('_chr', bamFile)[1].split('_')[0]
         
     return sam, "wb", fasta_file, args.o_polyA, args.o_nonpolyA, args.o_low_q_polyA, \
-            args.percentage_threshold, args.length_threshold, bool(args.use_fc), number, args.exact_out
+            args.percentage_threshold, args.length_threshold, bool(args.use_fc), number, \
+            args.exact_out, args.stats_tsv, args.sample_id, \
+            args.min_phred, args.tag_phred_mapped, args.tag_phred_softclipped
 
 def run_process():
     start = time.time()
     tracemalloc.start()
     
     sam, out_mode, fasta_file, out_polyA, out_non_polyA, o_low_q_polyA, \
-    percentage_threshold, length_threshold, use_fc, number, exact_out = get_all_polyA_input()
+    percentage_threshold, length_threshold, use_fc, number, exact_out, \
+    stats_tsv, sample_id, min_phred, tag_phred_mapped, tag_phred_softclipped = get_all_polyA_input()
+    
     print('successfully got inputs')
     
-    polyA_reads, non_polyA_reads, low_quality_pA_reads = \
-    find_polyA_seq(sam, percentage_threshold, length_threshold, fasta_file, use_fc)
+    polyA_reads, non_polyA_reads, low_quality_pA_reads = find_polyA_seq(
+        sam, percentage_threshold, length_threshold, fasta_file, use_fc, 
+        min_phred, tag_phred_mapped, tag_phred_softclipped
+    )
     print('successfully got all polyA reads')
     
     if exact_out:
@@ -379,6 +400,16 @@ def run_process():
     write_output(polyA_reads, corrected_out_polyA, out_mode, sam)
     write_output(non_polyA_reads, corrected_out_non_polyA, out_mode, sam)
     write_output(low_quality_pA_reads, corrected_out_low_q_polyA, out_mode, sam)
+    
+    if stats_tsv:
+        import csv
+        import os
+        with open(stats_tsv, 'w', newline='') as tsv_file:
+            writer = csv.writer(tsv_file, delimiter='\t')
+            writer.writerow(["sample_id", "chunk_filename", "polyA_reads", "non_polyA_reads", "low_q_polyA_reads"])
+            chunk_name = os.path.basename(sam.filename.decode() if isinstance(sam.filename, bytes) else sam.filename)
+            s_id = sample_id if sample_id else "unknown"
+            writer.writerow([s_id, chunk_name, len(polyA_reads), len(non_polyA_reads), len(low_quality_pA_reads)])
         
     print('elapsed time: ' + str(time.time() - start))
     print('memory usage is: ' + str(tracemalloc.get_traced_memory()))

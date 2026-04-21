@@ -368,7 +368,7 @@ def run_process():
         import os
         with open(stats_tsv, 'w', newline='') as tsv_file:
             writer = csv.writer(tsv_file, delimiter='\t')
-            writer.writerow(["sample_id", "chunk_filename", "polyA_reads", "non_polyA_reads", "low_q_polyA_reads"])
+            writer.writerow(["sample_id", "chunk_filename", "polyA_alignments", "non_polyA_alignments", "low_q_polyA_alignments"])
             chunk_name = os.path.basename(sam.filename.decode() if isinstance(sam.filename, bytes) else sam.filename)
             s_id = sample_id if sample_id else "unknown"
             writer.writerow([s_id, chunk_name, len(polyA_reads), len(non_polyA_reads), len(low_quality_pA_reads)])

@@ -196,3 +196,6 @@ result/
 **/.nextflow/
 **/.nextflow*
 **/work/
+
+# IDE/editor config files
+.vscode/

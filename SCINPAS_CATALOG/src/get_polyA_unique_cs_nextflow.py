@@ -113,15 +113,21 @@ def convert_dict_to_df(cleavage_dictionary, all_mode, num_reads, sample):
     
     return final_df
     
-def get_num_unique_cleavage(sam, use_FC):
+def get_num_unique_cleavage(bam, use_fc, tag_orig_cs="XO", tag_fixed_cs="XF"):
     """
     Parameters
     ----------
     bam : bam file
         a bam file containing polyA reads.
     
-    use_FC : bool
+    use_fc : bool
         use fixed cleavage site or not.
+        
+    tag_orig_cs : str
+        the name of the custom tag that contains the original cleavage site position.
+        
+    tag_fixed_cs : str
+        the name of the custom tag that contains the fixed cleavage site position.
         
     Returns
     -------
@@ -129,35 +135,24 @@ def get_num_unique_cleavage(sam, use_FC):
         key = cleavage site id = chromosome:fixed_cleavage_site:direction    
         value = how many times that cleavage site occured   
     """      
-    unique_cleavage_site = Counter()
-    for read in sam.fetch():
-        chrom = read.reference_name
-        rev = read.is_reverse
-        alignedRefPositions = read.get_reference_positions()
-        refStart = alignedRefPositions[0]
-        refEnd = alignedRefPositions[-1]
-        if rev == True:
-            rev = '-'
-            if not use_FC:
-                # assert(refStart == int(read.get_tag('OC')))
-                assert(refStart + 1 == int(read.get_tag('XO')))
-                end = int(read.get_tag('XO'))
+    unique_cleavage_site = {}
+    for r in bam.fetch():
+        chrom = r.reference_name
+        direction = "-" if r.is_reverse else "+"
+        
+        if not use_fc:
+            cleavage_site = r.get_tag(tag_orig_cs)
+        elif use_fc:
+            cleavage_site = r.get_tag(tag_fixed_cs)
             
-            elif use_FC:
-                end = int(read.get_tag('XF'))      
-        else:
-            rev = '+'
-            if not use_FC:
-                # assert(refEnd == int(read.get_tag('OC')))
-                assert(refEnd + 1 == int(read.get_tag('XO')))
-                end = int(read.get_tag('XO'))
+        temp_dict = {'chr' : chrom, 'direction' : direction, 'cleavage_site' : cleavage_site}
+        dict_val = tuple(temp_dict.values())
+        
+        if dict_val not in unique_cleavage_site:
+            unique_cleavage_site[dict_val] = 1
+        elif dict_val in unique_cleavage_site:
+            unique_cleavage_site[dict_val] += 1
             
-            elif use_FC:
-                end = int(read.get_tag('XF'))            
-                
-        cleavage_site_id = str(chrom) + ":" + str(end) + ":" + str(rev)
-        unique_cleavage_site[cleavage_site_id] += 1    
-    
     return unique_cleavage_site
         
 def get_args():        
@@ -168,10 +163,10 @@ def get_args():
     parser.add_argument('--split', dest='split', required=False, default="")
     parser.add_argument('--multiple_samples', dest='multiple_samples', type=int, default=0)
     parser.add_argument('--count_dir', dest='count_dir', default=0)
-    
-    # NEW ARGUMENTS FOR NANOFLOWZ
     parser.add_argument('--exact_out', action='store_true')
     parser.add_argument('--sample_name', dest='sample_name', required=False)
+    parser.add_argument('--tag_orig_cs', dest='tag_orig_cs', default="XO")
+    parser.add_argument('--tag_fixed_cs', dest='tag_fixed_cs', default="XF")
     args = parser.parse_args()
     
     if args.multiple_samples:
@@ -180,13 +175,13 @@ def get_args():
     else:
         pA_count = 0
         
-    return args.bam, args.bed_out, bool(args.use_fc), args.split, args.multiple_samples, pA_count, args.exact_out, args.sample_name
+    return args.bam, args.bed_out, bool(args.use_fc), args.split, args.multiple_samples, pA_count, args.exact_out, args.sample_name, args.tag_orig_cs, args.tag_fixed_cs
 
 def run_process():
-    bam_dir, bed_out, use_fc, split, multiple_samples, pA_count, exact_out, sample_name_arg = get_args()
+    bam_dir, bed_out, use_fc, split, multiple_samples, pA_count, exact_out, sample_name_arg, tag_orig_cs, tag_fixed_cs = get_args()
     bam = pysam.AlignmentFile(bam_dir, "rb")
     
-    unique_cleavage_site = get_num_unique_cleavage(bam, use_fc)
+    unique_cleavage_site = get_num_unique_cleavage(bam, use_fc, tag_orig_cs, tag_fixed_cs)
     
     if exact_out:
         sample_name = sample_name_arg if sample_name_arg else "sample"

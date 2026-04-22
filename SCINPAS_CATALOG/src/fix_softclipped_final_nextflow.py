@@ -266,64 +266,56 @@ def extract_sequences(Read, fasta):
     left_end = tuples[0]
     right_end = tuples[-1]
         
-    # reads that are checked should have polyA tail
     if rev == True and left_end[0] == 4:
-        # if a read is mapped reversly,  reads should be reverse complemented
-        # so that you can compare read vs genome
-        # for that, you need to use query_sequence (but U is converted into T)
         full_sequence = Read.query_sequence
         
-        # start_point should be smaller than the end_point to extract genomic sequence
         end_point = int(refStart) - 1
         start_point = int(refStart)  - left_end[1]
-        if start_point < 0 or end_point < 0:
-            print('refStart: ' + str(refStart))
-            print('left_end[1]: ' + str(left_end[1]))
-            print('read_softclipped: ' + str(full_sequence[0 : left_end[1]]))
-            return None, None, None # Return None if out-of-boundary
         
-        genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
+        # Out of bounds check (left edge of chromosome)
+        if start_point < 0 or end_point < 0:
+            return None, None, None 
+        
+        try:
+            genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
+        except (KeyError, ValueError):
+            return None, None, None
+            
         read_softclipped = full_sequence[0 : left_end[1]]
-        # print("read softclipped (-) is: " + str(read_softclipped))
-        # print("genomic_sequence is: " + str(genome_sequence))
-        print('chromosome: ' + str(chromosome))
-        print('direction: ' + str(rev))
-        # print('refEnd: ' + str(refEnd))
-        print('refStart: ' + str(refStart))
-        if Read.has_tag('UR') and Read.has_tag('CB'):
-            umi = Read.get_tag('UR')
-            cb = Read.get_tag('CB')
-            print('umi: ' + str(umi))
-            print('cb: ' + str(cb))
+        
+        # Prevent AssertionError: If pysam truncated the fetch due to edge boundaries
+        if len(genome_sequence) != len(read_softclipped):
+            return None, None, None
+            
         threshold = max(left_end[1]/10, 2)
         
     elif rev == False and right_end[0] == 4:
-        # get original transcript sequence (but U is converted into T)
         full_sequence = Read.get_forward_sequence()
+        
         start_point = int(refEnd) + 1
         end_point = int(refEnd) + right_end[1]
         chromosome_length = fasta.get_reference_length(chromosome)
-        if end_point > chromosome_length or start_point > chromosome_length:
-            print('refEnd: ' + str(refEnd))
-            print('right_end[1]: ' + str(right_end[1]))
-            print('read_softclipped: ' + str(full_sequence[len(full_sequence) - right_end[1] : len(full_sequence)]))
-            print('chromosome_length: ' + str(chromosome_length))
-            return None, None, None # Return None if out-of-boundary
         
-        genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
+        # Out of bounds check (right edge of chromosome)
+        if end_point >= chromosome_length or start_point >= chromosome_length:
+            return None, None, None 
+        
+        try:
+            genome_sequence = fasta.fetch(reference = chromosome, start = start_point, end = end_point + 1)
+        except (KeyError, ValueError):
+            return None, None, None
+            
         read_softclipped = full_sequence[len(full_sequence) - right_end[1] : len(full_sequence)]
-        # print("read softclipped is (+) : " + str(read_softclipped))
-        # print("genomic_sequence is: " + str(genome_sequence))
-        print('chromosome: ' + str(chromosome))
-        print('direction: ' + str(rev))
-        print('refEnd: ' + str(refEnd))
-        # print('refStart: ' + str(refStart))  
-        if Read.has_tag('UR') and Read.has_tag('CB'):
-            umi = Read.get_tag('UR')
-            cb = Read.get_tag('CB')
-            print('umi: ' + str(umi))
-            print('cb: ' + str(cb))        
+        
+        # Prevent AssertionError: If pysam truncated the fetch due to edge boundaries
+        if len(genome_sequence) != len(read_softclipped):
+            return None, None, None
+            
         threshold = max(right_end[1]/10, 2)
+        
+    else:
+        # Failsafe if it enters without meeting conditions
+        return None, None, None
         
     return genome_sequence, read_softclipped, threshold
 

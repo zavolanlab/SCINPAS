@@ -319,7 +319,77 @@ def extract_sequences(Read, fasta):
         
     return genome_sequence, read_softclipped, threshold
 
-def fix_soft_clipped(sam, fasta_file, one_based_tags=False, tag_orig="XO", tag_fixed="XF"):
+
+def apply_ambiguous_shift(chromosome, cs_0based, rev, fasta):
+    """
+    Shifts the cleavage site to the left-most 'A' (+ strand) 
+    or right-most 'T' (- strand) of an ambiguous genomic stretch.
+    Expects and returns 0-based genomic coordinates.
+    """
+    try:
+        chrom_len = fasta.get_reference_length(chromosome)
+    except KeyError:
+        return cs_0based
+        
+    if cs_0based < 0 or cs_0based >= chrom_len:
+        return cs_0based
+        
+    if not rev:  # '+' strand: shift left to find the first non-'A'
+        pos = cs_0based
+        while pos >= 0:
+            start_fetch = max(0, pos - 50 + 1)
+            try:
+                chunk = fasta.fetch(reference=chromosome, start=start_fetch, end=pos + 1).upper()
+            except (KeyError, ValueError):
+                break
+            
+            # Check from right to left
+            shifted = 0
+            for i in range(len(chunk) - 1, -1, -1):
+                if chunk[i] == 'A':
+                    shifted += 1
+                else:
+                    break
+            
+            pos -= shifted
+            # Stop if we hit a non-'A' or reached the start of the chromosome
+            if shifted < len(chunk) or pos < 0:
+                break
+                
+        # If we shifted, pos is now at the first non-'A'. The left-most 'A' is pos + 1.
+        if pos < cs_0based:
+            return pos + 1
+        return cs_0based
+
+    else:  # '-' strand: shift right to find the first non-'T'
+        pos = cs_0based
+        while pos < chrom_len:
+            end_fetch = min(chrom_len, pos + 50)
+            try:
+                chunk = fasta.fetch(reference=chromosome, start=pos, end=end_fetch).upper()
+            except (KeyError, ValueError):
+                break
+            
+            # Check from left to right
+            shifted = 0
+            for i in range(len(chunk)):
+                if chunk[i] == 'T':
+                    shifted += 1
+                else:
+                    break
+            
+            pos += shifted
+            # Stop if we hit a non-'T' or reached the end of the chromosome
+            if shifted < len(chunk) or pos >= chrom_len:
+                break
+        
+        # If we shifted, pos is now at the first non-'T'. The right-most 'T' is pos - 1.
+        if pos > cs_0based:
+            return pos - 1
+        return cs_0based
+
+
+def fix_soft_clipped(sam, fasta_file, one_based_tags=False, tag_orig="XO", tag_fixed="XF", shift_ambiguous_cs=False):
     """
     Parameters
     ----------    
@@ -334,6 +404,8 @@ def fix_soft_clipped(sam, fasta_file, one_based_tags=False, tag_orig="XO", tag_f
         name of the tag to store original cleavage site (default: 'XO').
     tag_fixed: str
         name of the tag to store fixed cleavage site (default: 'XF').
+    shift_ambiguous_cs: bool
+        whether to shift cleavage sites to the boundary of an ambiguous genomic A/T stretch.
     Returns
     -------        
     changed_reads : list
@@ -402,7 +474,11 @@ def fix_soft_clipped(sam, fasta_file, one_based_tags=False, tag_orig="XO", tag_f
         elif rev == False and right_end[0] != 4:          
             cleavage_site = int(refEnd)
             fixed_cleavage_site = cleavage_site
-                
+    
+        # Shift to the A/T stretch boundary if requested
+        if shift_ambiguous_cs:
+            fixed_cleavage_site = apply_ambiguous_shift(chrom, fixed_cleavage_site, rev, fasta_file)
+
         if one_based_tags:
             tag_val_orig = cleavage_site + 1
             tag_val_fixed = fixed_cleavage_site + 1
@@ -430,6 +506,9 @@ def get_inputs():
     parser.add_argument('--one_based_tags', action='store_true', help='Store 1-based coordinates in tags')
     parser.add_argument('--tag_orig_cs', dest='tag_orig_cs', default="XO", help='Tag for original cleavage site')
     parser.add_argument('--tag_fixed_cs', dest='tag_fixed_cs', default="XF", help='Tag for fixed cleavage site')
+    
+    # TO enable shifting cleavage sites to the boundary of an ambiguous genomic A/T stretch
+    parser.add_argument('--shift_ambiguous_cs', action='store_true', help="Shift cleavage site to the boundary of an ambiguous genomic A/T stretch.")
     args = parser.parse_args()
 
     bamFile = args.bam_file  
@@ -441,10 +520,10 @@ def get_inputs():
     else:
         number = re.split('_chr', bamFile)[1].split('_')[0]
         
-    return bam, fasta, args.bam_out, number, args.csv_out, args.exact_out, args.one_based_tags, args.tag_orig_cs, args.tag_fixed_cs
+    return bam, fasta, args.bam_out, number, args.csv_out, args.exact_out, args.one_based_tags, args.tag_orig_cs, args.tag_fixed_cs, args.shift_ambiguous_cs
         
 def run_process():
-    bam, fasta, bam_out, number, csv_out, exact_out, one_based_tags, tag_orig_cs, tag_fixed_cs = get_inputs()
+    bam, fasta, bam_out, number, csv_out, exact_out, one_based_tags, tag_orig_cs, tag_fixed_cs, shift_ambiguous_cs = get_inputs()
     print('successfully got inputs')
     
     if exact_out:
@@ -454,7 +533,7 @@ def run_process():
         corrected_bam_out = bam_out + '_chr' + number + '.bam'
         out_file = "num_fixed_unfixed" + "_" + number + ".csv"
     
-    changed_reads, num_fixed, num_unfixed = fix_soft_clipped(bam, fasta, one_based_tags, tag_orig_cs, tag_fixed_cs)
+    changed_reads, num_fixed, num_unfixed = fix_soft_clipped(bam, fasta, one_based_tags, tag_orig_cs, tag_fixed_cs, shift_ambiguous_cs)
     print('successfully added new tags')
     
     write_output(changed_reads, corrected_bam_out, "wb", bam)

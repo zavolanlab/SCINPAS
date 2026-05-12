@@ -46,7 +46,7 @@ def write_output(final_reads, o_name, o_mode, bam):
     for read in final_reads:
         outfile.write(read)
 
-def get_median_phred_polyA(r, is_fc, tag_orig_cs="XO", tag_fixed_cs="XF"):
+def get_median_phred_polyA(r, is_fc, tag_orig_cs="XO", tag_fixed_cs="XF", shift_ambiguous_cs=False):
     rev = r.is_reverse
     tuples = r.cigartuples
     left_end = tuples[0]
@@ -64,7 +64,8 @@ def get_median_phred_polyA(r, is_fc, tag_orig_cs="XO", tag_fixed_cs="XF"):
             OCS = r.get_tag(tag_orig_cs)
             FCS = r.get_tag(tag_fixed_cs)
             difference = OCS - FCS
-            assert(difference >= 0)
+            if not (shift_ambiguous_cs and difference < 0):
+                assert(difference >= 0)
             len_pA = left_end[1] - difference
             len_read = len(qualities)
             mapped_qualities = qualities[0 : len_read - len_pA]
@@ -81,7 +82,8 @@ def get_median_phred_polyA(r, is_fc, tag_orig_cs="XO", tag_fixed_cs="XF"):
             OCS = r.get_tag(tag_orig_cs)
             FCS = r.get_tag(tag_fixed_cs)
             difference = FCS - OCS
-            assert(difference >= 0)
+            if not (shift_ambiguous_cs and difference < 0):
+                assert(difference >= 0)
             len_pA = right_end[1] - difference
             len_read = len(qualities)
             mapped_qualities = qualities[0 : len_read - len_pA]
@@ -126,7 +128,7 @@ If you want original sequence in 5'->3', use read.get_forward_sequence()
 If you want reverse complemented sequence so that you can compare it to genome 5'-> 3', use read.query_sequence
 Need to consdier direction as well
 """
-def check_polyA(read, left_end, right_end, percentage_threshold, length_threshold, use_fc, tag_orig_cs="XO", tag_fixed_cs="XF"):
+def check_polyA(read, left_end, right_end, percentage_threshold, length_threshold, use_fc, tag_orig_cs="XO", tag_fixed_cs="XF", shift_ambiguous_cs=False):
     """
     Parameters
     ----------
@@ -183,7 +185,8 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             OCS = read.get_tag(tag_orig_cs)
             FCS = read.get_tag(tag_fixed_cs)
             difference = OCS - FCS
-            assert(difference >= 0)
+            if not (shift_ambiguous_cs and difference < 0):
+                assert(difference >= 0)
             potential_polyA = full_sequence[len(full_sequence) - left_end[1] + difference : len(full_sequence)]
             len_pA = left_end[1] - difference
             
@@ -204,7 +207,8 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
             OCS = read.get_tag(tag_orig_cs)
             FCS = read.get_tag(tag_fixed_cs)
             difference = FCS - OCS
-            assert(difference >= 0)
+            if not (shift_ambiguous_cs and difference < 0):
+                assert(difference >= 0)
             potential_polyA = full_sequence[len(full_sequence) - right_end[1] + difference : len(full_sequence)]
             len_pA = right_end[1] - difference
             
@@ -220,7 +224,7 @@ def check_polyA(read, left_end, right_end, percentage_threshold, length_threshol
         return False
 
 def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC, min_phred=30.0, 
-                   tag_phred_mapped="", tag_phred_softclipped="", tag_orig_cs="XO", tag_fixed_cs="XF"):
+                   tag_phred_mapped="", tag_phred_softclipped="", tag_orig_cs="XO", tag_fixed_cs="XF",shift_ambiguous_cs=False):
     """
     Parameters
     ----------
@@ -280,9 +284,9 @@ def find_polyA_seq(sam, percentage_threshold, length_threshold, fasta, use_FC, m
         right_end = tuples[-1]
         
         if left_end[0] == 4 or right_end[0] == 4:           
-            is_polyA = check_polyA(read, left_end, right_end, percentage_threshold, length_threshold, use_FC, tag_orig_cs, tag_fixed_cs)
+            is_polyA = check_polyA(read, left_end, right_end, percentage_threshold, length_threshold, use_FC, tag_orig_cs, tag_fixed_cs, shift_ambiguous_cs)
             if is_polyA:
-                phred_median_mapped, phred_median_softclipped = get_median_phred_polyA(read, use_FC, tag_orig_cs, tag_fixed_cs)
+                phred_median_mapped, phred_median_softclipped = get_median_phred_polyA(read, use_FC, tag_orig_cs, tag_fixed_cs, shift_ambiguous_cs)
                 
                 if tag_phred_mapped:
                     read.set_tag(tag_phred_mapped, float(phred_median_mapped), value_type='f')
@@ -319,7 +323,7 @@ def get_all_polyA_input():
     parser.add_argument('--tag_phred_softclipped', type=str, default="", help="Custom SAM tag for softclipped PHRED (e.g., ZC)")
     parser.add_argument('--tag_orig_cs', dest='tag_orig_cs', default="XO")
     parser.add_argument('--tag_fixed_cs', dest='tag_fixed_cs', default="XF")
-    
+    parser.add_argument('--shift_ambiguous_cs', action='store_true', help="Account for shifted ambiguous CS values (see fix_softclipped_final_nextflow.py)")
     args = parser.parse_args()
     
     bamFile = args.bam_input
@@ -333,7 +337,7 @@ def get_all_polyA_input():
     return sam, "wb", fasta_file, args.o_polyA, args.o_nonpolyA, args.o_low_q_polyA, \
             args.percentage_threshold, args.length_threshold, bool(args.use_fc), number, \
             args.exact_out, args.stats_tsv, args.sample_id, \
-            args.min_phred, args.tag_phred_mapped, args.tag_phred_softclipped, args.tag_orig_cs, args.tag_fixed_cs
+            args.min_phred, args.tag_phred_mapped, args.tag_phred_softclipped, args.tag_orig_cs, args.tag_fixed_cs, args.shift_ambiguous_cs
 
 def run_process():
     start = time.time()
@@ -342,11 +346,11 @@ def run_process():
     sam, out_mode, fasta_file, out_polyA, out_non_polyA, o_low_q_polyA, \
     percentage_threshold, length_threshold, use_fc, number, exact_out, \
     stats_tsv, sample_id, min_phred, tag_phred_mapped, tag_phred_softclipped, \
-    tag_orig_cs, tag_fixed_cs = get_all_polyA_input()
+    tag_orig_cs, tag_fixed_cs, shift_ambiguous_cs = get_all_polyA_input()
     
     polyA_reads, non_polyA_reads, low_quality_pA_reads = find_polyA_seq(
         sam, percentage_threshold, length_threshold, fasta_file, use_fc, 
-        min_phred, tag_phred_mapped, tag_phred_softclipped, tag_orig_cs, tag_fixed_cs
+        min_phred, tag_phred_mapped, tag_phred_softclipped, tag_orig_cs, tag_fixed_cs, shift_ambiguous_cs
     )
     print('successfully got all polyA reads')
     

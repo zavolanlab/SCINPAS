@@ -356,9 +356,9 @@ def apply_ambiguous_shift(chromosome, cs_0based, rev, fasta):
             if shifted < len(chunk) or pos < 0:
                 break
                 
-        # If we shifted, pos is now at the first non-'A'. The left-most 'A' is pos + 1.
+        # If we shifted, pos is now at the first non-'A'.
         if pos < cs_0based:
-            return pos + 1
+            return pos
         return cs_0based
 
     else:  # '-' strand: shift right to find the first non-'T'
@@ -383,9 +383,9 @@ def apply_ambiguous_shift(chromosome, cs_0based, rev, fasta):
             if shifted < len(chunk) or pos >= chrom_len:
                 break
         
-        # If we shifted, pos is now at the first non-'T'. The right-most 'T' is pos - 1.
+        # If we shifted, pos is now at the first non-'T' which we term cleavage site.
         if pos > cs_0based:
-            return pos - 1
+            return pos
         return cs_0based
 
 
